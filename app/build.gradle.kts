@@ -7,12 +7,27 @@ android {
     namespace = "com.aqw.companion"
     compileSdk = 35
 
+    signingConfigs {
+        create("stable") {
+            storeFile = file(System.getenv("AQW_KEYSTORE_PATH") ?: "missing-keystore.jks")
+            storePassword = System.getenv("AQW_KEYSTORE_PASSWORD")
+            keyAlias = "aqwcompanion"
+            keyPassword = System.getenv("AQW_KEYSTORE_PASSWORD")
+        }
+    }
+
     defaultConfig {
         applicationId = "com.aqw.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.4"
+        versionCode = 5
+        versionName = "0.5"
+    }
+
+    buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("stable")
+        }
     }
 
     compileOptions {
