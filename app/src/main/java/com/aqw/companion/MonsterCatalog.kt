@@ -83,7 +83,11 @@ object MonsterCatalog {
             val candidate = cleanOcrLine(raw)
             if (candidate.isBlank()) continue
             val key = normalize(candidate)
-            normalized[key]?.let { found.add(it); continue }
+            val exact = normalized[key]
+            if (exact != null) {
+                found.add(exact)
+                continue
+            }
             // OCR sometimes confuses a single character. Keep fuzzy matching
             // conservative to avoid treating player/class labels as monsters.
             if (key.length >= 7) {
