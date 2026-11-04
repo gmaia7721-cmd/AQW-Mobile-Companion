@@ -15,27 +15,21 @@ class MainActivity : Activity() {
     companion object {
         private const val REQUEST_OVERLAY = 100
         private const val REQUEST_CAPTURE = 101
-        const val ACTION_SCAN = "com.aqw.companion.ACTION_SCAN"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        if (intent.action == ACTION_SCAN) {
-            requestScreenCapture()
-            return
-        }
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(32, 48, 32, 32)
         }
         layout.addView(TextView(this).apply {
-            text = "AQW Mobile Companion\n\nScanner visual por OCR. A captura da tela só começa após sua autorização."
-            textSize = 20f
+            text = "AQW Mobile Companion\n\nPrepare a captura antes de entrar no servidor. Depois, mantenha o jogo aberto e use o painel flutuante para identificar os monstros."
+            textSize = 18f
         })
         layout.addView(Button(this).apply {
-            text = "Ativar painel flutuante"
+            text = "Preparar para jogar"
             setOnClickListener {
                 if (!Settings.canDrawOverlays(this@MainActivity)) {
                     startActivityForResult(
@@ -43,8 +37,7 @@ class MainActivity : Activity() {
                         REQUEST_OVERLAY
                     )
                 } else {
-                    startService(Intent(this@MainActivity, OverlayService::class.java))
-                    finish()
+                    requestScreenCapture()
                 }
             }
         })
@@ -60,10 +53,7 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_OVERLAY) {
-            if (Settings.canDrawOverlays(this)) {
-                startService(Intent(this, OverlayService::class.java))
-                finish()
-            }
+            if (Settings.canDrawOverlays(this)) requestScreenCapture()
         } else if (requestCode == REQUEST_CAPTURE) {
             if (resultCode == RESULT_OK && data != null) {
                 val serviceIntent = Intent(this, OverlayService::class.java).apply {
