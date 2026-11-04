@@ -48,6 +48,7 @@ class MainActivity : Activity() {
                 }
             }
         })
+        setContentView(layout)
     }
 
     private fun requestScreenCapture() {
