@@ -69,44 +69,102 @@ class OverlayService : Service() {
         return START_NOT_STICKY
     }
 
+    private var panelParams: WindowManager.LayoutParams? = null
+    private var expanded = false
+    private var statusMessage = "AQW Companion • captura aguardando"
+
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density).toInt()
+
     private fun showPanel() {
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(20, 16, 20, 16)
-            setBackgroundColor(0xEE20242A.toInt())
-        }
-        statusView = TextView(this).apply {
-            text = "AQW Companion • aguardando preparação"
-            textSize = 14f
-            setTextColor(0xFFFFFFFF.toInt())
-        }
-        box.addView(statusView)
-        box.addView(Button(this).apply {
-            text = "IDENTIFICAR MONSTROS"
-            setOnClickListener {
-                if (mediaProjection == null || imageReader == null) {
-                    updateStatus("Captura não preparada. Abra o Companion e toque em Preparar para jogar antes de entrar no servidor.")
-                } else if (processing || scanRequested) {
-                    updateStatus("A análise anterior ainda está em andamento.")
-                } else {
-                    scanRequested = true
-                    updateStatus("Capturando a tela do jogo…")
-                }
-            }
-        })
-        box.addView(Button(this).apply {
-            text = "Fechar painel"
-            setOnClickListener { stopSelf() }
-        })
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            dp(56),
+            dp(56),
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.TOP or Gravity.END; x = 24; y = 120 }
-        windowManager.addView(box, params)
-        panel = box
+        ).apply {
+            gravity = Gravity.TOP or Gravity.END
+            x = dp(12)
+            y = dp(120)
+        }
+        panelParams = params
+        panel = LinearLayout(this)
+        renderPanel()
+        windowManager.addView(panel, params)
+    }
+
+    private fun renderPanel() {
+        val box = panel ?: return
+        box.removeAllViews()
+        box.orientation = LinearLayout.VERTICAL
+        box.setPadding(dp(10), dp(8), dp(10), dp(8))
+        box.setBackgroundColor(0xEE20242A.toInt())
+
+        if (!expanded) {
+            val bubble = Button(this).apply {
+                text = "AQW"
+                textSize = 13f
+                setPadding(dp(4), 0, dp(4), 0)
+                setOnClickListener {
+                    expanded = true
+                    resizePanel()
+                    renderPanel()
+                }
+            }
+            box.addView(bubble, LinearLayout.LayoutParams(dp(56), dp(40)))
+        } else {
+            val header = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            header.addView(TextView(this).apply {
+                text = "AQW • MONSTROS"
+                textSize = 13f
+                setTextColor(0xFFFFFFFF.toInt())
+            }, LinearLayout.LayoutParams(0, dp(36), 1f))
+            header.addView(Button(this).apply {
+                text = "—"
+                textSize = 16f
+                setPadding(0, 0, 0, 0)
+                setOnClickListener {
+                    expanded = false
+                    resizePanel()
+                    renderPanel()
+                }
+            }, LinearLayout.LayoutParams(dp(42), dp(36)))
+            box.addView(header)
+
+            statusView = TextView(this).apply {
+                text = statusMessage
+                textSize = 12f
+                maxLines = 4
+                setTextColor(0xFFFFFFFF.toInt())
+                setPadding(dp(2), dp(4), dp(2), dp(6))
+            }
+            box.addView(statusView)
+
+            box.addView(Button(this).apply {
+                text = "BUSCAR MONSTROS"
+                setOnClickListener {
+                    if (mediaProjection == null || imageReader == null) {
+                        updateStatus("Captura não preparada. Abra o Companion e toque em Preparar para jogar antes de entrar no servidor.")
+                    } else if (processing || scanRequested) {
+                        updateStatus("A análise anterior ainda está em andamento.")
+                    } else {
+                        scanRequested = true
+                        updateStatus("Capturando a tela do jogo…")
+                    }
+                }
+            })
+        }
+    }
+
+    private fun resizePanel() {
+        val params = panelParams ?: return
+        params.width = if (expanded) dp(240) else dp(76)
+        params.height = WindowManager.LayoutParams.WRAP_CONTENT
+        panel?.let { windowManager.updateViewLayout(it, params) }
     }
 
     private fun startForegroundCompat() {
@@ -247,6 +305,7 @@ class OverlayService : Service() {
     }
 
     private fun updateStatus(message: String) {
+        statusMessage = message
         mainHandler.post { statusView?.text = message }
     }
 
