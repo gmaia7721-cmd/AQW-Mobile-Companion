@@ -30,7 +30,7 @@ class MainActivity : Activity() {
             setPadding(32, 48, 32, 32)
         }
         layout.addView(TextView(this).apply {
-            text = "AQW Mobile Companion\\n\\nPrepare a captura antes de entrar no servidor. Depois, mantenha o jogo aberto e use o painel flutuante para identificar os monstros.\\n\\nVersão instalada: ${BuildConfig.VERSION_NAME}"
+            text = "AQW Mobile Companion\\n\\nPrepare a captura antes de entrar no servidor. Depois, mantenha o jogo aberto e use o painel flutuante para identificar os monstros.\\n\\nVersão instalada: ${installedVersionName()}"
             textSize = 18f
         })
         layout.addView(Button(this).apply {
@@ -48,6 +48,11 @@ class MainActivity : Activity() {
         })
         setContentView(layout)
         checkForUpdates()
+    }
+
+    private fun installedVersionName(): String {
+        @Suppress("DEPRECATION")
+        return packageManager.getPackageInfo(packageName, 0).versionName ?: "0.0"
     }
 
     private fun checkForUpdates() {
@@ -80,12 +85,12 @@ class MainActivity : Activity() {
 
             val remote = latestVersion
             val url = releaseUrl
-            if (!remote.isNullOrBlank() && !url.isNullOrBlank() && isNewerVersion(remote, BuildConfig.VERSION_NAME)) {
+            if (!remote.isNullOrBlank() && !url.isNullOrBlank() && isNewerVersion(remote, installedVersionName())) {
                 runOnUiThread {
                     if (!isFinishing && !isDestroyed) {
                         AlertDialog.Builder(this)
                             .setTitle("Nova atualização disponível!")
-                            .setMessage("Versão instalada: ${BuildConfig.VERSION_NAME}\\nNova versão: $remote\\n\\nDeseja abrir a página para baixar a atualização?")
+                            .setMessage("Versão instalada: ${installedVersionName()}\\nNova versão: $remote\\n\\nDeseja abrir a página para baixar a atualização?")
                             .setNegativeButton("Depois", null)
                             .setPositiveButton("Baixar atualização") { _, _ ->
                                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
