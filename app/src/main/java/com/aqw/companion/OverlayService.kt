@@ -289,8 +289,21 @@ class OverlayService : Service() {
         }
         image.close()
 
+        val sourceBitmap = bitmap ?: run {
+            processing = false
+            return
+        }
+        // Enlarge small floating monster labels before OCR. A 1.5x scale
+        // improves character detail without the memory cost of doubling
+        // the full captured screen.
+        val ocrBitmap = Bitmap.createScaledBitmap(
+            sourceBitmap,
+            (sourceBitmap.width * 1.5f).toInt().coerceAtLeast(sourceBitmap.width),
+            (sourceBitmap.height * 1.5f).toInt().coerceAtLeast(sourceBitmap.height),
+            true
+        )
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        recognizer.process(InputImage.fromBitmap(bitmap, 0))
+        recognizer.process(InputImage.fromBitmap(ocrBitmap, 0))
             .addOnSuccessListener { result ->
                 val lines = result.textBlocks.flatMap { block -> block.lines.map { it.text.trim() } }
                     .filter { it.length >= 3 }
@@ -314,7 +327,8 @@ class OverlayService : Service() {
                 updateStatus("Erro no reconhecimento de texto. Tente novamente.")
             }
             .addOnCompleteListener {
-                bitmap.recycle()
+                if (ocrBitmap !== sourceBitmap) ocrBitmap.recycle()
+                sourceBitmap.recycle()
                 recognizer.close()
                 processing = false
             }
