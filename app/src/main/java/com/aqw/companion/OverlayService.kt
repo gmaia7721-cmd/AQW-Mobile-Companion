@@ -138,7 +138,7 @@ class OverlayService : Service() {
             statusView = TextView(this).apply {
                 text = statusMessage
                 textSize = 12f
-                maxLines = 4
+                maxLines = 14
                 setTextColor(0xFFFFFFFF.toInt())
                 setPadding(dp(2), dp(4), dp(2), dp(6))
             }
@@ -296,8 +296,9 @@ class OverlayService : Service() {
                     lines.isEmpty() ->
                         "Nenhum texto reconhecido. Verifique se o nome do monstro está visível na tela."
                     else ->
-                        "Nenhum nome da base foi confirmado. Textos lidos para diagnóstico:\n" +
-                            lines.take(5).joinToString("\n")
+                        "Nenhum monstro confirmado. OCR leu ${lines.size} linhas:\n" +
+                            lines.take(14).joinToString("\n") +
+                            if (lines.size > 14) "\n… e mais ${lines.size - 14} linhas" else ""
                 }
                 updateStatus(output)
             }
