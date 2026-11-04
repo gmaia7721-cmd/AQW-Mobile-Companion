@@ -77,7 +77,34 @@ object MonsterCatalog {
         "Big Bad Boar", "Ogug Stoneaxe", "Brentan", "Flibbitiestgibbet"
     ).distinct()
 
-    private val normalized = names.associateBy { normalize(it) }
+    @Volatile private var allNames: List<String> = names
+    @Volatile private var normalized: Map<String, String> = buildIndex(names)
+
+    @Synchronized
+    fun replaceRemoteNames(remoteNames: Collection<String>) {
+        val cleaned = remoteNames.map { it.trim() }
+            .filter { it.length in 3..90 && !it.startsWith("Category:", true) && !it.startsWith("File:", true) }
+        val merged = (names + cleaned).distinctBy { normalize(it) }
+        allNames = merged
+        normalized = buildIndex(merged)
+    }
+
+    fun currentCount(): Int = allNames.size
+
+    private fun buildIndex(values: Collection<String>): Map<String, String> {
+        val index = LinkedHashMap<String, String>()
+        for (name in values) {
+            val key = normalize(name)
+            if (key.isNotBlank()) index.putIfAbsent(key, displayName(name))
+        }
+        return index
+    }
+
+    private fun displayName(value: String): String = value
+        .replace(Regex("""\s*\(Monster\)""", RegexOption.IGNORE_CASE), "")
+        .replace(Regex("""\s*\(Version\s*\d+\)""", RegexOption.IGNORE_CASE), "")
+        .replace(Regex("""\s*\(\d+\)"""), "")
+        .trim()
 
     fun findMatches(ocrLines: List<String>): List<String> {
         val found = linkedSetOf<String>()
@@ -105,7 +132,8 @@ object MonsterCatalog {
 
     private fun cleanOcrLine(value: String): String {
         return value.trim()
-            .replace(Regex("\\s*\\(\\s*Version\\s*\\d+\\s*\\)", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""\s*\(Monster\)""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""\s*\(\s*Version\s*\d+\s*\)""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("\\s*\\(\\s*\\d+\\s*\\)"), "")
             .replace(Regex("\\s+[xX]\\s*\\d+\\s*$"), "")
             .replace(Regex("\\s+(Lv\\.?|Level)\\s*\\d+.*$", RegexOption.IGNORE_CASE), "")
@@ -114,7 +142,11 @@ object MonsterCatalog {
     }
 
     private fun normalize(value: String): String {
-        val plain = Normalizer.normalize(value, Normalizer.Form.NFD)
+        val withoutWikiSuffixes = value
+            .replace(Regex("""\s*\(Monster\)""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""\s*\(Version\s*\d+\)""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""\s*\(\d+\)"""), "")
+        val plain = Normalizer.normalize(withoutWikiSuffixes, Normalizer.Form.NFD)
             .replace(Regex("\\p{Mn}+"), "")
         return plain.lowercase(Locale.ROOT)
             .replace(Regex("[^a-z0-9]"), "")
