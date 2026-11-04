@@ -287,10 +287,17 @@ class OverlayService : Service() {
                 val lines = result.textBlocks.flatMap { block -> block.lines.map { it.text.trim() } }
                     .filter { it.length >= 3 }
                     .distinct()
-                val output = if (lines.isEmpty()) {
-                    "Nenhum texto reconhecido. O scanner ainda precisa da base de nomes dos monstros."
-                } else {
-                    "Textos encontrados na tela:\n" + lines.take(12).joinToString("\n")
+                val monsters = MonsterCatalog.findMatches(lines)
+                val output = when {
+                    monsters.isNotEmpty() ->
+                        "MONSTROS IDENTIFICADOS (\${monsters.size}):\n" +
+                            monsters.take(8).joinToString("\n") +
+                            if (monsters.size > 8) "\n+\${monsters.size - 8} outros" else ""
+                    lines.isEmpty() ->
+                        "Nenhum texto reconhecido. Verifique se o nome do monstro está visível na tela."
+                    else ->
+                        "Nenhum nome da base foi confirmado. Textos lidos para diagnóstico:\n" +
+                            lines.take(5).joinToString("\n")
                 }
                 updateStatus(output)
             }
