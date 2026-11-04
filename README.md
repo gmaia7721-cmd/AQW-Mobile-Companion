@@ -1,16 +1,14 @@
 # AQW Mobile Companion
 
-Companion visual para Android e Artix Experimental Launcher.
+Android companion app for reading visible AdventureQuest Worlds monster labels through Android screen capture and on-device ML Kit OCR.
 
-## Versão 0.2
-- Painel flutuante Android.
-- Scanner de tela com autorização explícita do Android (MediaProjection).
-- Reconhecimento de texto offline com Google ML Kit Text Recognition.
-- Exibe os textos encontrados para ajudar a localizar nomes de monstros.
-- Não lê HP, não automatiza combate, não lê memória, não injeta código nem altera o cliente AQW.
+## Monster catalogue
+- Includes a built-in offline fallback list.
+- Downloads public monster and boss names from the AdventureQuest Worlds community wiki when the overlay service starts and internet is available.
+- Stores the downloaded names locally so recognition can continue offline.
+- Normalizes wiki suffixes such as `(Monster)`, `(1)`, and `(Version 2)` before matching.
 
-## Limitações do scanner
-O OCR reconhece texto visível na imagem; ele não conhece sozinho o catálogo de monstros do AQW e pode confundir nomes de NPCs, jogadores, chat ou elementos da interface. A identificação exata de cada criatura em todos os mapas exigirá uma etapa adicional de validação/classificação. A captura depende da autorização de compartilhamento de tela do Android.
+The catalogue is intended to cover monsters across maps; OCR quality and wiki completeness still affect recognition. It does not automate gameplay or read game memory.
 
-## Compilar
-O GitHub Actions executa `assembleDebug` e publica o APK como artefato do workflow.
+## Build
+The GitHub Actions workflow builds the debug APK and publishes it as a GitHub release.
