@@ -302,36 +302,81 @@ class OverlayService : Service() {
             (sourceBitmap.height * 1.5f).toInt().coerceAtLeast(sourceBitmap.height),
             true
         )
+        val redTextBitmap = createRedTextBitmap(sourceBitmap)
+        val redOcrBitmap = Bitmap.createScaledBitmap(redTextBitmap, ocrBitmap.width, ocrBitmap.height, true)
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        val recognizedLines = linkedSetOf<String>()
+        var completedPasses = 0
+        var successfulPasses = 0
+
+        fun finishPass() {
+            completedPasses++
+            if (completedPasses < 2) return
+            val lines = recognizedLines.toList()
+            val monsters = MonsterCatalog.findMatches(lines)
+            val output = when {
+                monsters.isNotEmpty() ->
+                    "MONSTROS IDENTIFICADOS (${monsters.size}):\n" +
+                        monsters.take(8).joinToString("\n") +
+                        if (monsters.size > 8) "\n+${monsters.size - 8} outros" else ""
+                lines.isEmpty() ->
+                    "Nenhum texto reconhecido. Verifique se os nomes estão visíveis."
+                else ->
+                    "Nenhum monstro confirmado. OCR leu ${lines.size} linhas:\n" +
+                        lines.take(14).joinToString("\n") +
+                        if (lines.size > 14) "\n… e mais ${lines.size - 14} linhas" else ""
+            }
+            if (successfulPasses == 0) updateStatus("Erro no reconhecimento de texto. Tente novamente.")
+            else updateStatus(output)
+            ocrBitmap.recycle()
+            redOcrBitmap.recycle()
+            redTextBitmap.recycle()
+            sourceBitmap.recycle()
+            recognizer.close()
+            processing = false
+        }
+
+        // Full-screen pass keeps support for labels in colors other than red.
         recognizer.process(InputImage.fromBitmap(ocrBitmap, 0))
             .addOnSuccessListener { result ->
-                val lines = result.textBlocks.flatMap { block -> block.lines.map { it.text.trim() } }
-                    .filter { it.length >= 3 }
-                    .distinct()
-                val monsters = MonsterCatalog.findMatches(lines)
-                val output = when {
-                    monsters.isNotEmpty() ->
-                        "MONSTROS IDENTIFICADOS (${monsters.size}):\n" +
-                            monsters.take(8).joinToString("\n") +
-                            if (monsters.size > 8) "\n+${monsters.size - 8} outros" else ""
-                    lines.isEmpty() ->
-                        "Nenhum texto reconhecido. Verifique se o nome do monstro está visível na tela."
-                    else ->
-                        "Nenhum monstro confirmado. OCR leu ${lines.size} linhas:\n" +
-                            lines.take(14).joinToString("\n") +
-                            if (lines.size > 14) "\n… e mais ${lines.size - 14} linhas" else ""
-                }
-                updateStatus(output)
+                successfulPasses++
+                result.textBlocks.flatMap { block -> block.lines.map { it.text.trim() } }
+                    .filter { it.length >= 3 }.forEach { recognizedLines.add(it) }
             }
-            .addOnFailureListener {
-                updateStatus("Erro no reconhecimento de texto. Tente novamente.")
+            .addOnCompleteListener { finishPass() }
+
+        // Focused pass increases contrast for AQW's red monster name labels.
+        recognizer.process(InputImage.fromBitmap(redOcrBitmap, 0))
+            .addOnSuccessListener { result ->
+                successfulPasses++
+                result.textBlocks.flatMap { block -> block.lines.map { it.text.trim() } }
+                    .filter { it.length >= 3 }.forEach { recognizedLines.add(it) }
             }
-            .addOnCompleteListener {
-                if (ocrBitmap !== sourceBitmap) ocrBitmap.recycle()
-                sourceBitmap.recycle()
-                recognizer.close()
-                processing = false
+            .addOnCompleteListener { finishPass() }
+    }
+
+    /**
+     * Creates a black-on-white mask of red-dominant pixels. The ordinary OCR
+     * pass still runs, so labels in other colors remain detectable.
+     */
+    private fun createRedTextBitmap(source: Bitmap): Bitmap {
+        val output = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+        val row = IntArray(source.width)
+        val mask = IntArray(source.width)
+        for (y in 0 until source.height) {
+            source.getPixels(row, 0, source.width, 0, y, source.width, 1)
+            for (x in row.indices) {
+                val pixel = row[x]
+                val red = (pixel shr 16) and 0xFF
+                val green = (pixel shr 8) and 0xFF
+                val blue = pixel and 0xFF
+                val isRedText = red >= 75 && red - green >= 25 && red - blue >= 25 &&
+                    red * 100 >= green * 118 && red * 100 >= blue * 118
+                mask[x] = if (isRedText) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
             }
+            output.setPixels(mask, 0, source.width, 0, y, source.width, 1)
+        }
+        return output
     }
 
     private fun updateStatus(message: String) {
