@@ -23,7 +23,7 @@ object MonsterCatalogUpdater {
     fun loadCached(context: Context) {
         val cached = context.applicationContext
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getStringSet(KEY_NAMES, emptySet())
+            .getStringSet(KEY_NAMES, mutableSetOf())
             ?.toList()
             .orEmpty()
         if (cached.isNotEmpty()) MonsterCatalog.replaceRemoteNames(cached)
