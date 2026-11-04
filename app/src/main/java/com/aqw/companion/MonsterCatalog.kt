@@ -108,23 +108,40 @@ object MonsterCatalog {
 
     fun findMatches(ocrLines: List<String>): List<String> {
         val found = linkedSetOf<String>()
-        for (raw in ocrLines) {
-            val candidate = cleanOcrLine(raw)
-            if (candidate.isBlank()) continue
-            val key = normalize(candidate)
-            val exact = normalized[key]
-            if (exact != null) {
-                found.add(exact)
-                continue
-            }
-            // OCR sometimes confuses a single character. Keep fuzzy matching
-            // conservative to avoid treating player/class labels as monsters.
+
+        fun matchKey(key: String): String? {
+            if (key.isBlank()) return null
+            normalized[key]?.let { return it }
+
+            // Keep fuzzy matching conservative: at most one OCR character error.
             if (key.length >= 7) {
-                val match = normalized.entries.firstOrNull { (known, _) ->
+                return normalized.entries.firstOrNull { (known, _) ->
                     kotlin.math.abs(known.length - key.length) <= 1 &&
                         editDistanceAtMostOne(known, key)
                 }?.value
-                if (match != null) found.add(match)
+            }
+            return null
+        }
+
+        for (raw in ocrLines) {
+            val candidate = cleanOcrLine(raw)
+            if (candidate.isBlank()) continue
+
+            matchKey(normalize(candidate))?.let {
+                found.add(it)
+                continue
+            }
+
+            // AQW can render a name beside small level/target text. OCR may
+            // merge these into one line, so also inspect contiguous 2+ word
+            // windows instead of requiring the entire line to equal a name.
+            val words = Regex("[A-Za-z0-9']+").findAll(candidate).map { it.value }.toList()
+            val maxWindow = minOf(words.size, 8)
+            for (windowSize in 2..maxWindow) {
+                for (start in 0..(words.size - windowSize)) {
+                    val phrase = words.subList(start, start + windowSize).joinToString(" ")
+                    matchKey(normalize(phrase))?.let { found.add(it) }
+                }
             }
         }
         return found.toList()
