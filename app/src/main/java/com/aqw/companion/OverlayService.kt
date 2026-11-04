@@ -302,8 +302,7 @@ class OverlayService : Service() {
             (sourceBitmap.height * 1.5f).toInt().coerceAtLeast(sourceBitmap.height),
             true
         )
-        val redTextBitmap = createRedTextBitmap(sourceBitmap)
-        val redOcrBitmap = Bitmap.createScaledBitmap(redTextBitmap, ocrBitmap.width, ocrBitmap.height, true)
+        val redOcrBitmap = createRedTextBitmap(ocrBitmap)
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         val recognizedLines = linkedSetOf<String>()
         var completedPasses = 0
@@ -330,7 +329,6 @@ class OverlayService : Service() {
             else updateStatus(output)
             ocrBitmap.recycle()
             redOcrBitmap.recycle()
-            redTextBitmap.recycle()
             sourceBitmap.recycle()
             recognizer.close()
             processing = false
