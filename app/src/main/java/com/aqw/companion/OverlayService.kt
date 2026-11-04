@@ -290,9 +290,9 @@ class OverlayService : Service() {
                 val monsters = MonsterCatalog.findMatches(lines)
                 val output = when {
                     monsters.isNotEmpty() ->
-                        "MONSTROS IDENTIFICADOS (\${monsters.size}):\n" +
+                        "MONSTROS IDENTIFICADOS (${monsters.size}):\n" +
                             monsters.take(8).joinToString("\n") +
-                            if (monsters.size > 8) "\n+\${monsters.size - 8} outros" else ""
+                            if (monsters.size > 8) "\n+${monsters.size - 8} outros" else ""
                     lines.isEmpty() ->
                         "Nenhum texto reconhecido. Verifique se o nome do monstro está visível na tela."
                     else ->
