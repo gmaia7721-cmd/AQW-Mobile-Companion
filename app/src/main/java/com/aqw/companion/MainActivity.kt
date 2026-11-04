@@ -48,7 +48,6 @@ class MainActivity : Activity() {
         })
         setContentView(layout)
         MonsterCatalogUpdater.loadCached(this)
-        MonsterCatalogUpdater.refresh(this)
         checkForUpdates()
     }
 
