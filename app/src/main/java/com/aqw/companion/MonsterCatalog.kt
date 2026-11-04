@@ -127,8 +127,9 @@ object MonsterCatalog {
             val candidate = cleanOcrLine(raw)
             if (candidate.isBlank()) continue
 
-            matchKey(normalize(candidate))?.let {
-                found.add(it)
+            val fullLineMatch = matchKey(normalize(candidate))
+            if (fullLineMatch != null) {
+                found.add(fullLineMatch)
                 continue
             }
 
