@@ -50,6 +50,10 @@ class OverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        MonsterCatalogUpdater.loadCached(this)
+        MonsterCatalogUpdater.refresh(this) { count, updated ->
+            if (updated) updateStatus("Catálogo atualizado: $count nomes. Pode buscar monstros.")
+        }
         showPanel()
     }
 
