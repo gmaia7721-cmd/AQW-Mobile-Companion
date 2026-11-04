@@ -52,7 +52,11 @@ class OverlayService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         MonsterCatalogUpdater.loadCached(this)
         MonsterCatalogUpdater.refresh(this) { count, updated ->
-            if (updated) updateStatus("Catálogo atualizado: $count nomes. Pode buscar monstros.")
+            if (updated) {
+                updateStatus("Base do Wiki atualizada: $count nomes. Pode buscar monstros.")
+            } else {
+                updateStatus("Base local disponível: $count nomes. Não foi possível atualizar o Wiki agora.")
+            }
         }
         showPanel()
     }
