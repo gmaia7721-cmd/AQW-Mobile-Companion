@@ -11,6 +11,8 @@ import java.util.Locale
  */
 object MonsterCatalog {
     private val names = listOf(
+        "Druid Revenant", "Forest Cultist", "Awakened Hunter", "ShadowSlayer G",
+        "Bloodlust", "Beastly Hunger", "Moon's Firstborn", "The Gentleman",
         "Abaddon", "Abandoned Dolly", "Abominator", "Abomineator", "Abyssal Bat",
         "Abyssal Guard", "Abyssal Mage", "Abyssal Underbeast", "Acornent", "Actual Sloth Dragon",
         "Akriloth", "Aku", "Albino Bat", "Alien Dino", "Alien Juggernaut", "Amethyst Golem",
@@ -103,6 +105,9 @@ object MonsterCatalog {
 
     private fun cleanOcrLine(value: String): String {
         return value.trim()
+            .replace(Regex("\\s*\\(\\s*Version\\s*\\d+\\s*\\)", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("\\s*\\(\\s*\\d+\\s*\\)"), "")
+            .replace(Regex("\\s+[xX]\\s*\\d+\\s*$"), "")
             .replace(Regex("\\s+(Lv\\.?|Level)\\s*\\d+.*$", RegexOption.IGNORE_CASE), "")
             .replace(Regex("\\s+\\d{1,3}\\s*/\\s*\\d{1,3}.*$"), "")
             .trim()
