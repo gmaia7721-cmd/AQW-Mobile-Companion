@@ -305,25 +305,42 @@ class OverlayService : Service() {
         val redOcrBitmap = createRedTextBitmap(ocrBitmap)
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         val recognizedLines = linkedSetOf<String>()
-        var completedPasses = 0
         var successfulPasses = 0
 
-        fun finishPass() {
-            completedPasses++
-            if (completedPasses < 2) return
+        // First read the full screen, then scan four overlapping regions.
+        // This gives small/distant monster labels a larger effective OCR area.
+        data class ScanRegion(val left: Int, val top: Int, val width: Int, val height: Int)
+        val regions = mutableListOf(
+            ScanRegion(0, 0, ocrBitmap.width, ocrBitmap.height)
+        )
+        val overlapX = (ocrBitmap.width * 0.12f).toInt()
+        val overlapY = (ocrBitmap.height * 0.12f).toInt()
+        val halfW = ocrBitmap.width / 2
+        val halfH = ocrBitmap.height / 2
+        for (row in 0..1) {
+            for (col in 0..1) {
+                val left = (col * halfW - if (col == 1) overlapX else 0).coerceAtLeast(0)
+                val top = (row * halfH - if (row == 1) overlapY else 0).coerceAtLeast(0)
+                val right = ((col + 1) * halfW + if (col == 0) overlapX else 0).coerceAtMost(ocrBitmap.width)
+                val bottom = ((row + 1) * halfH + if (row == 0) overlapY else 0).coerceAtMost(ocrBitmap.height)
+                regions.add(ScanRegion(left, top, right - left, bottom - top))
+            }
+        }
+
+        fun finishAll() {
+            val monsters = MonsterCatalog.findMatches(recognizedLines.toList())
             val lines = recognizedLines.toList()
-            val monsters = MonsterCatalog.findMatches(lines)
             val output = when {
                 monsters.isNotEmpty() ->
-                    "MONSTROS IDENTIFICADOS (${monsters.size}):\n" +
-                        monsters.take(8).joinToString("\n") +
-                        if (monsters.size > 8) "\n+${monsters.size - 8} outros" else ""
+                    "MONSTROS IDENTIFICADOS (${monsters.size}):\\n" +
+                        monsters.take(8).joinToString("\\n") +
+                        if (monsters.size > 8) "\\n+${monsters.size - 8} outros" else ""
                 lines.isEmpty() ->
                     "Nenhum texto reconhecido. Verifique se os nomes estão visíveis."
                 else ->
-                    "Nenhum monstro confirmado. OCR leu ${lines.size} linhas:\n" +
-                        lines.take(14).joinToString("\n") +
-                        if (lines.size > 14) "\n… e mais ${lines.size - 14} linhas" else ""
+                    "Nenhum monstro confirmado. OCR leu ${lines.size} linhas:\\n" +
+                        lines.take(14).joinToString("\\n") +
+                        if (lines.size > 14) "\\n… e mais ${lines.size - 14} linhas" else ""
             }
             if (successfulPasses == 0) updateStatus("Erro no reconhecimento de texto. Tente novamente.")
             else updateStatus(output)
@@ -334,23 +351,36 @@ class OverlayService : Service() {
             processing = false
         }
 
-        // Full-screen pass keeps support for labels in colors other than red.
-        recognizer.process(InputImage.fromBitmap(ocrBitmap, 0))
-            .addOnSuccessListener { result ->
-                successfulPasses++
-                result.textBlocks.flatMap { block -> block.lines.map { it.text.trim() } }
-                    .filter { it.length >= 3 }.forEach { recognizedLines.add(it) }
-            }
-            .addOnCompleteListener { finishPass() }
+        fun addResult(result: com.google.mlkit.vision.text.Text) {
+            successfulPasses++
+            result.textBlocks.flatMap { block -> block.lines.map { it.text.trim() } }
+                .filter { it.length >= 3 }.forEach { recognizedLines.add(it) }
+        }
 
-        // Focused pass increases contrast for AQW's red monster name labels.
-        recognizer.process(InputImage.fromBitmap(redOcrBitmap, 0))
-            .addOnSuccessListener { result ->
-                successfulPasses++
-                result.textBlocks.flatMap { block -> block.lines.map { it.text.trim() } }
-                    .filter { it.length >= 3 }.forEach { recognizedLines.add(it) }
+        // Process regions one at a time to limit memory use on the phone.
+        fun scanRegion(index: Int) {
+            if (index >= regions.size) {
+                finishAll()
+                return
             }
-            .addOnCompleteListener { finishPass() }
+            val region = regions[index]
+            val crop = Bitmap.createBitmap(
+                ocrBitmap, region.left, region.top, region.width, region.height
+            )
+            val redCrop = createRedTextBitmap(crop)
+            recognizer.process(InputImage.fromBitmap(crop, 0))
+                .addOnSuccessListener { result -> addResult(result) }
+                .addOnCompleteListener {
+                    recognizer.process(InputImage.fromBitmap(redCrop, 0))
+                        .addOnSuccessListener { result -> addResult(result) }
+                        .addOnCompleteListener {
+                            crop.recycle()
+                            redCrop.recycle()
+                            scanRegion(index + 1)
+                        }
+                }
+        }
+        scanRegion(0)
     }
 
     /**
