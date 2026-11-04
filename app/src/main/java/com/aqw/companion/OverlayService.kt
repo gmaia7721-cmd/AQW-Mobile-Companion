@@ -40,10 +40,12 @@ class OverlayService : Service() {
     private var panel: LinearLayout? = null
     private var statusView: TextView? = null
     private var mediaProjection: MediaProjection? = null
+    private var projectionCallback: MediaProjection.Callback? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var processing = false
+    @Volatile private var scanRequested = false
 
     override fun onCreate() {
         super.onCreate()
@@ -62,7 +64,7 @@ class OverlayService : Service() {
                 intent.getParcelableExtra(EXTRA_RESULT_DATA)
             }
             if (data != null) beginCapture(resultCode, data)
-            else updateStatus("Não foi possível iniciar a captura.")
+            else updateStatus("Não foi possível iniciar a captura. Abra o app e autorize novamente.")
         }
         return START_NOT_STICKY
     }
@@ -74,7 +76,7 @@ class OverlayService : Service() {
             setBackgroundColor(0xEE20242A.toInt())
         }
         statusView = TextView(this).apply {
-            text = "AQW Companion • pronto"
+            text = "AQW Companion • aguardando preparação"
             textSize = 14f
             setTextColor(0xFFFFFFFF.toInt())
         }
@@ -82,12 +84,14 @@ class OverlayService : Service() {
         box.addView(Button(this).apply {
             text = "IDENTIFICAR MONSTROS"
             setOnClickListener {
-                updateStatus("Autorize a captura de tela na próxima janela.")
-                val scanIntent = Intent(this@OverlayService, MainActivity::class.java).apply {
-                    action = MainActivity.ACTION_SCAN
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (mediaProjection == null || imageReader == null) {
+                    updateStatus("Captura não preparada. Abra o Companion e toque em Preparar para jogar antes de entrar no servidor.")
+                } else if (processing || scanRequested) {
+                    updateStatus("A análise anterior ainda está em andamento.")
+                } else {
+                    scanRequested = true
+                    updateStatus("Capturando a tela do jogo…")
                 }
-                startActivity(scanIntent)
             }
         })
         box.addView(Button(this).apply {
@@ -118,7 +122,7 @@ class OverlayService : Service() {
             @Suppress("DEPRECATION")
             Notification.Builder(this)
         }.setContentTitle("AQW Mobile Companion")
-            .setContentText("Analisando a tela do jogo")
+            .setContentText("Captura preparada para identificar monstros")
             .setSmallIcon(android.R.drawable.ic_menu_search)
             .setOngoing(true)
             .build()
@@ -135,7 +139,10 @@ class OverlayService : Service() {
     }
 
     private fun beginCapture(resultCode: Int, data: Intent) {
-        stopProjection()
+        if (mediaProjection != null) {
+            updateStatus("Captura já está preparada. Volte ao jogo e toque em Identificar Monstros.")
+            return
+        }
         try {
             val metrics = DisplayMetrics()
             @Suppress("DEPRECATION")
@@ -145,28 +152,50 @@ class OverlayService : Service() {
             val density = metrics.densityDpi
 
             val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            mediaProjection = manager.getMediaProjection(resultCode, data)
-            imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
-            imageReader?.setOnImageAvailableListener({ reader ->
-                if (processing) return@setOnImageAvailableListener
-                val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
+            val projection = manager.getMediaProjection(resultCode, data)
+            mediaProjection = projection
+
+            projectionCallback = object : MediaProjection.Callback() {
+                override fun onStop() {
+                    virtualDisplay?.release()
+                    virtualDisplay = null
+                    imageReader?.close()
+                    imageReader = null
+                    mediaProjection = null
+                    projectionCallback = null
+                    scanRequested = false
+                    processing = false
+                    updateStatus("Captura encerrada pelo Android. Abra o Companion e prepare novamente.")
+                }
+            }
+            projection.registerCallback(projectionCallback!!, mainHandler)
+
+            val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 3)
+            imageReader = reader
+            reader.setOnImageAvailableListener({ source ->
+                val image = source.acquireLatestImage() ?: return@setOnImageAvailableListener
+                if (!scanRequested || processing) {
+                    image.close()
+                    return@setOnImageAvailableListener
+                }
+                scanRequested = false
                 processing = true
                 analyzeImage(image)
             }, mainHandler)
 
-            virtualDisplay = mediaProjection?.createVirtualDisplay(
+            virtualDisplay = projection.createVirtualDisplay(
                 "AQW-Monster-Scanner",
                 width,
                 height,
                 density,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader?.surface,
+                reader.surface,
                 null,
                 mainHandler
             )
-            updateStatus("Lendo a tela… aguarde.")
+            updateStatus("Captura preparada! Agora entre no servidor. Não será necessário autorizar novamente nesta sessão.")
         } catch (e: Exception) {
-            updateStatus("Falha ao capturar: ${e.localizedMessage ?: "erro desconhecido"}")
+            updateStatus("Falha ao preparar captura: ${e.localizedMessage ?: "erro desconhecido"}")
             stopProjection()
             stopForeground(STOP_FOREGROUND_REMOVE)
         }
@@ -190,8 +219,6 @@ class OverlayService : Service() {
             updateStatus("Não foi possível ler a imagem da tela.")
             image.close()
             processing = false
-            stopProjection()
-            stopForeground(STOP_FOREGROUND_REMOVE)
             return
         }
         image.close()
@@ -203,9 +230,9 @@ class OverlayService : Service() {
                     .filter { it.length >= 3 }
                     .distinct()
                 val output = if (lines.isEmpty()) {
-                    "Nenhum nome/texto reconhecido. Tente deixar os monstros maiores na tela."
+                    "Nenhum texto reconhecido. O scanner ainda precisa da base de nomes dos monstros."
                 } else {
-                    "Textos encontrados (confira os nomes):\n" + lines.take(12).joinToString("\n")
+                    "Textos encontrados na tela:\n" + lines.take(12).joinToString("\n")
                 }
                 updateStatus(output)
             }
@@ -216,8 +243,6 @@ class OverlayService : Service() {
                 bitmap.recycle()
                 recognizer.close()
                 processing = false
-                stopProjection()
-                stopForeground(STOP_FOREGROUND_REMOVE)
             }
     }
 
@@ -226,13 +251,20 @@ class OverlayService : Service() {
     }
 
     private fun stopProjection() {
+        val projection = mediaProjection
+        val callback = projectionCallback
+        mediaProjection = null
+        projectionCallback = null
+        if (projection != null && callback != null) {
+            try { projection.unregisterCallback(callback) } catch (_: Exception) {}
+        }
         virtualDisplay?.release()
         virtualDisplay = null
         imageReader?.close()
         imageReader = null
-        mediaProjection?.stop()
-        mediaProjection = null
+        scanRequested = false
         processing = false
+        try { projection?.stop() } catch (_: Exception) {}
     }
 
     override fun onDestroy() {
