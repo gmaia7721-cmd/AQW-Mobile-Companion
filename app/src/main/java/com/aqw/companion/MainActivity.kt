@@ -53,10 +53,10 @@ class MainActivity : Activity() {
 
     private lateinit var content: LinearLayout
     private lateinit var nav: LinearLayout
-    private val bg = Color.rgb(11, 16, 29)
-    private val panel = Color.rgb(24, 33, 51)
-    private val accent = Color.rgb(114, 150, 255)
-    private val muted = Color.rgb(166, 181, 207)
+    private val bg = Color.rgb(13, 17, 24)
+    private val panel = Color.rgb(32, 37, 46)
+    private val accent = Color.rgb(222, 175, 82)
+    private val muted = Color.rgb(176, 184, 196)
     private val white = Color.rgb(239, 244, 255)
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun rounded(color: Int, radius: Int = 16) = GradientDrawable().apply { setColor(color); cornerRadius = dp(radius).toFloat() }
@@ -84,7 +84,7 @@ class MainActivity : Activity() {
         window.navigationBarColor = bg
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(20), dp(16), dp(12))
+            setPadding(dp(12), dp(12), dp(12), dp(8))
             setBackgroundColor(bg)
         }
         root.addView(TextView(this).apply {
@@ -95,17 +95,17 @@ class MainActivity : Activity() {
             typeface = Typeface.DEFAULT_BOLD
         })
         root.addView(TextView(this).apply {
-            textSize = 26f
-            text = "Seu guia de batalha"
+            textSize = 23f
+            text = "Guia de Aventura"
             setTextColor(white)
             typeface = Typeface.DEFAULT_BOLD
             setPadding(0, dp(6), 0, dp(3))
         })
         root.addView(TextView(this).apply {
-            text = "Classes • Forge • Ultras • Tier List"
+            text = "Seu inventário de estratégias"
             textSize = 13f
             setTextColor(muted)
-            setPadding(0, 0, 0, dp(20))
+            setPadding(0, 0, 0, dp(12))
         })
         nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -143,7 +143,7 @@ class MainActivity : Activity() {
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(if (tab == section) bg else muted)
                 background = rounded(if (tab == section) accent else panel, 13)
-                setPadding(dp(3), dp(13), dp(3), dp(13))
+                setPadding(dp(4), dp(10), dp(4), dp(10))
                 setOnClickListener { showSection(tab) }
             }, LinearLayout.LayoutParams(dp(if (tab == "Tier List") 90 else 80), -2))
         }
@@ -462,14 +462,14 @@ class MainActivity : Activity() {
         val selected = value.endsWith(" ✓")
         content.addView(TextView(this).apply {
             text = if (selected) "✓  " + value.removeSuffix(" ✓") else value + "   ›"
-            textSize = 14f
+            textSize = 13f
             gravity = android.view.Gravity.CENTER_VERTICAL
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(if (selected) bg else white)
-            background = rounded(if (selected) accent else panel, 14)
-            setPadding(dp(16), dp(15), dp(14), dp(15))
+            background = rounded(if (selected) accent else panel, 9)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
             setOnClickListener { action() }
-        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(5) })
     }
 
     private fun formatTimestamp(timestamp: Long): String =
