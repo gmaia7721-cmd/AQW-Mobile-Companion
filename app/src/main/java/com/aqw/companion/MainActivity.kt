@@ -139,10 +139,59 @@ class MainActivity : Activity() {
                         showSection("Ultras")
                     }
                 }
-                addText("As estratégias de Ultra não fazem parte do índice de classes da AQW Wiki. Esta versão disponibiliza guias comunitários especializados para composição, funções, taunts e consumíveis, sem inventar recomendações.", 14f)
-                addButton("Abrir guia de Ultras — Jix") { openUrl(WikiDataRepository.ULTRA_GUIDE_URL) }
-                addButton("Abrir setups e consumíveis — AQWG") { openUrl(WikiDataRepository.ULTRA_SETUP_URL) }
-                addText("Os consumíveis variam conforme classe, função e chefe. Não use a mesma combinação para todos os Ultras.", 14f)
+                if (selectedUltra == "Ultra Dage") {
+                    addText("ULTRA DAGE • /join ultradage • Equipe de 4", 17f)
+                    addText("Composição sugerida: Chaos Avenger + Verus DoomKnight + Lord of Order + ArchPaladin. Alternativa: Legion DoomKnight no lugar de VDK.", 14f)
+                    addText("Selecione abaixo a classe para ver sua função, Forge e consumíveis. Todas as recomendações ficam nesta tela, inclusive offline.", 13f)
+                    val dageClasses = listOf("Chaos Avenger", "Verus DoomKnight", "Lord of Order", "ArchPaladin", "Legion DoomKnight")
+                    dageClasses.forEach { className ->
+                        addButton(className + if (selectedClass == className) " ✓" else "") {
+                            selectedClass = className
+                            saveSelection("selected_class", className)
+                            showSection("Ultras")
+                        }
+                    }
+                    val chosen = selectedClass.takeIf { it in dageClasses } ?: "Chaos Avenger"
+                    addText("SETUP: $chosen", 18f)
+                    when (chosen) {
+                        "Chaos Avenger" -> {
+                            addText("Função: tank / taunt principal. Combine skill 3 com Scroll of Enrage para manter o aggro.", 14f)
+                            addText("Arma: Dauntless (alternativa: Health Vamp)\nClasse: Lucky\nElmo: Anima\nCapa: Vainglory (Penitence se precisar resistir)", 14f)
+                            addText("Tônico: Fate Tonic\nElixir: Potent Destruction Elixir\nPoção/scroll: Scroll of Enrage", 14f)
+                            addText("Cuidado: evite a skill 4 quando causar cura periódica sob Noxious Decay.", 13f)
+                        }
+                        "Verus DoomKnight" -> {
+                            addText("Função: dano, debuffs e aplicar Decay para impedir a cura do Dage.", 14f)
+                            addText("Arma: Dauntless ou Valiance\nClasse: Lucky\nElmo: Anima\nCapa: Vainglory", 14f)
+                            addText("Tônico: Fate Tonic\nElixir: Potent Destruction Elixir\nPoção: Potent Honor Potion", 14f)
+                            addText("Use a skill 5 para aplicar Decay na fase em que Dage prepara a regeneração.", 13f)
+                        }
+                        "Lord of Order" -> {
+                            addText("Função: buffs para o grupo. Não use a habilidade de cura durante Noxious Decay.", 14f)
+                            addText("Arma: Health Vamp\nClasse: Lucky\nElmo: Forge padrão\nCapa: Vainglory (ou Penitence para defesa)", 14f)
+                            addText("Tônico: Body Tonic\nElixir: opcional, conforme sobrevivência\nPoção: Potent Honor Potion", 14f)
+                            addText("Mantenha buffs sem ativar cura direta que possa prejudicar o grupo.", 13f)
+                        }
+                        "ArchPaladin" -> {
+                            addText("Função: defesa, debuffs e Broken Seal. Evite a skill de cura durante Decay.", 14f)
+                            addText("Arma: Health Vamp\nClasse: Lucky\nElmo: Forge padrão\nCapa: Vainglory (ou Penitence)", 14f)
+                            addText("Tônico: Fate Tonic\nElixir: Potent Destruction Elixir\nPoção: Potent Honor Potion", 14f)
+                            addText("Concentre-se em manter os debuffs e stacks de Broken Seal.", 13f)
+                        }
+                        else -> {
+                            addText("Função: aplicar Decay e contribuir com dano.", 14f)
+                            addText("Arma: Dauntless ou Health Vamp\nClasse: Lucky\nElmo: Anima\nCapa: Vainglory", 14f)
+                            addText("Tônico: Fate Tonic\nElixir: Potent Destruction Elixir\nPoção: Potent Honor Potion", 14f)
+                            addText("Mantenha o Decay com a skill 5 na fase de regeneração.", 13f)
+                        }
+                    }
+                    addText("MECÂNICAS: não use curas normais sob Noxious Decay; Health Vamp/lifesteal funciona. Mova-se para a plataforma iluminada. Cada morte cura 500 mil HP do chefe.", 14f)
+                    addText("Setups recomendados pela comunidade, sujeitos a ajustes conforme a equipe, o nível e as atualizações do AQW.", 12f)
+                } else if (selectedUltra.isNotBlank()) {
+                    addText("Ainda não há um setup específico validado para $selectedUltra. Não vou apresentar a build de outro chefe como se fosse adequada.", 14f)
+                } else {
+                    addText("Selecione um Ultra para consultar a composição e os equipamentos recomendados.", 14f)
+                }
             }
             "Forge" -> {
                 addText("FORGE & ENHANCEMENTS", 19f)
