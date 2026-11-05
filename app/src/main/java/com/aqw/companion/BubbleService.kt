@@ -106,7 +106,7 @@ class BubbleService: Service() {
         box.addView(header)
         val tabs=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
         listOf("Ultras","Classes","Forge","Poções").forEach { name->
-            val tabButton=button(name){tab=name;render()}.apply {
+            val tabButton=button(name){tab=name;showClassPicker=false;resize();render()}.apply {
                 gravity=Gravity.CENTER
                 textSize=11f
                 setPadding(dp(2),dp(7),dp(2),dp(7))
@@ -196,14 +196,14 @@ class BubbleService: Service() {
                 val allClasses=(WikiDataRepository.cachedClasses(this).map{it.name}
                     +ClassBuildRepository.cached(this).map{it.className}
                     +UltraGuide.bosses.flatMap{it.team}).distinct().sortedWith(String.CASE_INSENSITIVE_ORDER)
-                item("Classe: $chosen   ▾"){showClassPicker=!showClassPicker;render()}
+                item("Classe: $chosen   ▾"){showClassPicker=!showClassPicker;resize();render()}
                 if(showClassPicker){
                     line("Catálogo: ${allClasses.size} classes • toque para selecionar")
                     val results=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
                     fun showMatches(query:String){
                         results.removeAllViews()
                         allClasses.filter{it.contains(query,true)}.take(40).forEach{c->
-                            results.addView(button(c){chosen=c;showClassPicker=false;render()})
+                            results.addView(button(c){chosen=c;showClassPicker=false;resize();render()})
                         }
                     }
                     val input=EditText(this).apply{
@@ -276,6 +276,8 @@ class BubbleService: Service() {
     }
     private fun resize(){
         val p=params?:return
+        p.flags=if(expanded && tab=="Classes" && showClassPicker) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        p.softInputMode=WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
         p.width=if(expanded) dp(300).coerceAtMost(resources.displayMetrics.widthPixels-dp(24)) else dp(58)
         p.height=if(expanded) (resources.displayMetrics.heightPixels*0.43).toInt().coerceAtLeast(dp(270)) else dp(58)
         p.x=p.x.coerceIn(0,(resources.displayMetrics.widthPixels-p.width).coerceAtLeast(0))
