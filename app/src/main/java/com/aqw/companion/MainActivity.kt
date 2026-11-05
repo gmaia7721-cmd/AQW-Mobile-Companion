@@ -3,6 +3,10 @@ package com.aqw.companion
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.DownloadManager
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.os.Build
+import android.view.WindowInsets
 import android.os.Environment
 import android.content.Context
 import android.content.Intent
@@ -51,6 +55,8 @@ class MainActivity : Activity() {
         )
     }
 
+    private var updateDownloadId = -1L
+    private var updateReceiver: BroadcastReceiver? = null
     private lateinit var content: LinearLayout
     private lateinit var nav: LinearLayout
     private val bg = Color.rgb(13, 17, 24)
@@ -82,6 +88,31 @@ class MainActivity : Activity() {
 
         window.statusBarColor = bg
         window.navigationBarColor = bg
+        if (Build.VERSION.SDK_INT >= 35) {
+            window.decorView.setOnApplyWindowInsetsListener { view, insets ->
+                val bars = insets.getInsets(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                view.setPadding(0, bars.top, 0, bars.bottom)
+                insets
+            }
+        }
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+                if (id != updateDownloadId) return
+                val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                val uri = manager.getUriForDownloadedFile(id) ?: return
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Atualização pronta")
+                    .setMessage("Download concluído. Abrir o instalador do Android?")
+                    .setNegativeButton("Depois", null)
+                    .setPositiveButton("Instalar") { _, _ -> openApkInstaller(uri) }
+                    .show()
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver,
+            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_NOT_EXPORTED)
+        else registerReceiver(receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+        updateReceiver = receiver
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(12), dp(12), dp(8))
@@ -554,6 +585,23 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    override fun onDestroy() {
+        updateReceiver?.let { unregisterReceiver(it) }
+        super.onDestroy()
+    }
+
+    private fun openApkInstaller(uri: Uri) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            })
+        } catch (error: Exception) {
+            AlertDialog.Builder(this).setMessage("Não foi possível abrir o instalador. Abra o APK em Downloads.")
+                .setPositiveButton("OK", null).show()
+        }
+    }
+
     private fun downloadUpdate(url: String, version: String) {
         if (url.isBlank()) {
             AlertDialog.Builder(this).setMessage("APK ainda indisponível.").setPositiveButton("OK",null).show()
@@ -566,9 +614,9 @@ class MainActivity : Activity() {
                 .setMimeType("application/vnd.android.package-archive")
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,"AQW-Companion-v$version.apk")
-            (getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).enqueue(request)
+            updateDownloadId = (getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).enqueue(request)
             AlertDialog.Builder(this).setTitle("Download iniciado")
-                .setMessage("Quando terminar, toque na notificação de download para instalar a atualização.")
+                .setMessage("Mantenha o Companion aberto. Quando o download terminar, toque em Instalar. O APK também ficará em Downloads.")
                 .setPositiveButton("OK",null).show()
         } catch(e:Exception) {
             AlertDialog.Builder(this).setMessage(e.localizedMessage ?: "Falha no download")
