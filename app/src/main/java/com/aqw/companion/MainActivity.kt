@@ -16,6 +16,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.HorizontalScrollView
 import android.widget.TextView
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -111,7 +112,11 @@ class MainActivity : Activity() {
             background = rounded(panel, 18)
             setPadding(dp(4), dp(4), dp(4), dp(4))
         }
-        root.addView(ScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(nav) })
+        root.addView(HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            isFillViewport = false
+            addView(nav)
+        })
         val scroll = ScrollView(this).apply { isFillViewport = false; clipToPadding = false }
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -122,7 +127,7 @@ class MainActivity : Activity() {
         setContentView(root)
         showSection("Classes")
         refreshWikiData(showMessage = false)
-        refreshClassBuildData(showMessage = false)
+        // A fonte AQWG pode mudar o HTML; atualização manual evita falhas repetidas ao abrir.
         checkForUpdates()
     }
 
@@ -337,7 +342,7 @@ class MainActivity : Activity() {
                 }
             } catch (error: Exception) {
                 runOnUiThread {
-                    classBuildStatus = "Falha ao atualizar recomendações. Cache anterior preservado. " + (error.localizedMessage ?: "")
+                    classBuildStatus = "Não foi possível importar as builds desta fonte. A lista de classes da Wiki continua disponível; recomendações individuais ainda precisam de uma fonte compatível. " + (error.localizedMessage ?: "")
                     showSection(currentSection)
                     if (showMessage) AlertDialog.Builder(this).setTitle("Não foi possível atualizar")
                         .setMessage(classBuildStatus).setPositiveButton("OK", null).show()
