@@ -127,7 +127,7 @@ class MainActivity : Activity() {
         currentSection = section
         content.removeAllViews()
         nav.removeAllViews()
-        listOf("Classes", "Ultras", "Forge", "Biblioteca").forEach { tab ->
+        listOf("Classes", "Ultras", "Forge", "Poções", "Biblioteca").forEach { tab ->
             nav.addView(TextView(this).apply {
                 text = when(tab) { "Biblioteca" -> "Dados"; else -> tab }
                 gravity = android.view.Gravity.CENTER
@@ -138,6 +138,10 @@ class MainActivity : Activity() {
                 setPadding(dp(3), dp(13), dp(3), dp(13))
                 setOnClickListener { showSection(tab) }
             }, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        if (section == "Ultras" || section == "Forge" || section == "Classes" || section == "Poções") {
+            addButton("⚔ Ativar bolinha flutuante") { startBubble() }
+            addButton("Parar bolinha") { stopService(Intent(this, BubbleService::class.java)) }
         }
         when (section) {
             "Classes" -> {
@@ -184,87 +188,47 @@ class MainActivity : Activity() {
                         showSection("Ultras")
                     }
                 }
-                if (selectedUltra == "Ultra Dage") {
-                    addText("ULTRA DAGE • /join ultradage • Equipe de 4", 17f)
-                    addText("Composição sugerida: Chaos Avenger + Verus DoomKnight + Lord of Order + ArchPaladin. Alternativa: Legion DoomKnight no lugar de VDK.", 14f)
-                    addText("Selecione abaixo a classe para ver sua função, Forge e consumíveis. Todas as recomendações ficam nesta tela, inclusive offline.", 13f)
-                    val dageClasses = listOf("Chaos Avenger", "Verus DoomKnight", "Lord of Order", "ArchPaladin", "Legion DoomKnight")
-                    dageClasses.forEach { className ->
-                        addButton(className + if (selectedClass == className) " ✓" else "") {
+                val guide = UltraGuide.bosses.firstOrNull { it.name == selectedUltra }
+                if (guide != null) {
+                    addText("LOCAL: /join ${guide.join}", 16f)
+                    addButton("Copiar /join ${guide.join}") { copyJoin("/join ${guide.join}") }
+                    addText("EQUIPE • toque na classe para ver a build", 17f)
+                    guide.team.forEachIndexed { index, className ->
+                        addButton("${index+1}. $className — ${guide.roles[index]}") {
                             selectedClass = className
                             saveSelection("selected_class", className)
                             showSection("Ultras")
                         }
                     }
-                    val chosen = selectedClass.takeIf { it in dageClasses } ?: "Chaos Avenger"
-                    addText("SETUP: $chosen", 18f)
-                    when (chosen) {
-                        "Chaos Avenger" -> {
-                            addText("Função: tank / taunt principal. Combine skill 3 com Scroll of Enrage para manter o aggro.", 14f)
-                            addText("Arma: Dauntless (alternativa: Health Vamp)\nClasse: Lucky\nElmo: Anima\nCapa: Vainglory (Penitence se precisar resistir)", 14f)
-                            addText("Tônico: Fate Tonic\nElixir: Potent Destruction Elixir\nPoção/scroll: Scroll of Enrage", 14f)
-                            addText("Cuidado: evite a skill 4 quando causar cura periódica sob Noxious Decay.", 13f)
-                        }
-                        "Verus DoomKnight" -> {
-                            addText("Função: dano, debuffs e aplicar Decay para impedir a cura do Dage.", 14f)
-                            addText("Arma: Dauntless ou Valiance\nClasse: Lucky\nElmo: Anima\nCapa: Vainglory", 14f)
-                            addText("Tônico: Fate Tonic\nElixir: Potent Destruction Elixir\nPoção: Potent Honor Potion", 14f)
-                            addText("Use a skill 5 para aplicar Decay na fase em que Dage prepara a regeneração.", 13f)
-                        }
-                        "Lord of Order" -> {
-                            addText("Função: buffs para o grupo. Não use a habilidade de cura durante Noxious Decay.", 14f)
-                            addText("Arma: Health Vamp\nClasse: Lucky\nElmo: Forge padrão\nCapa: Vainglory (ou Penitence para defesa)", 14f)
-                            addText("Tônico: Body Tonic\nElixir: opcional, conforme sobrevivência\nPoção: Potent Honor Potion", 14f)
-                            addText("Mantenha buffs sem ativar cura direta que possa prejudicar o grupo.", 13f)
-                        }
-                        "ArchPaladin" -> {
-                            addText("Função: defesa, debuffs e Broken Seal. Evite a skill de cura durante Decay.", 14f)
-                            addText("Arma: Health Vamp\nClasse: Lucky\nElmo: Forge padrão\nCapa: Vainglory (ou Penitence)", 14f)
-                            addText("Tônico: Fate Tonic\nElixir: Potent Destruction Elixir\nPoção: Potent Honor Potion", 14f)
-                            addText("Concentre-se em manter os debuffs e stacks de Broken Seal.", 13f)
-                        }
-                        else -> {
-                            addText("Função: aplicar Decay e contribuir com dano.", 14f)
-                            addText("Arma: Dauntless ou Health Vamp\nClasse: Lucky\nElmo: Anima\nCapa: Vainglory", 14f)
-                            addText("Tônico: Fate Tonic\nElixir: Potent Destruction Elixir\nPoção: Potent Honor Potion", 14f)
-                            addText("Mantenha o Decay com a skill 5 na fase de regeneração.", 13f)
-                        }
-                    }
-                    addText("ONDE CONSEGUIR OS CONSUMÍVEIS", 18f)
-                    addText("Poções, tônicos e elixires: /join alchemyacademy\\nFale com Alina e abra a loja Gebo. Você também pode preparar os consumíveis pelo sistema de Alchemy.", 14f)
-                    addText("Fate Tonic: loja Gebo ou Alchemy. Versão normal: requer Rank 8 Alchemy.\\nBody Tonic: loja Gebo ou Alchemy. Versão normal: requer Rank 8 Alchemy.", 14f)
-                    addText("Potent Destruction Elixir: loja Gebo (Gold Voucher 500k x2 + 2.000 Gold para 8 unidades) ou Alchemy.", 14f)
-                    addText("Potent Honor Potion: loja Gebo (Gold Voucher 500k x1 para 5 unidades) ou Alchemy. Requer Rank 10 Good.", 14f)
-                    addText("Scroll of Enrage: /join dragonrune\\nFaça o SpellCrafting com Zealous Ink. Não é vendido como poção na Alchemy Academy.", 14f)
-                    addButton("Copiar /join alchemyacademy") { run {
-                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AQW join", "/join alchemyacademy"))
-                    } }
-                    addButton("Copiar /join dragonrune") {
-                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AQW join", "/join dragonrune"))
-                    }
-                    addText("MECÂNICAS: não use curas normais sob Noxious Decay; Health Vamp/lifesteal funciona. Mova-se para a plataforma iluminada. Cada morte cura 500 mil HP do chefe.", 14f)
-                    addText("Setups recomendados pela comunidade, sujeitos a ajustes conforme a equipe, o nível e as atualizações do AQW.", 12f)
+                    val chosen = selectedClass.takeIf { it in guide.team } ?: guide.team.first()
+                    addText("BUILD: $chosen", 18f)
+                    UltraGuide.build(chosen)?.let { build ->
+                        addText("Weapon: ${build.weapon}\nClass: ${build.classEnh}\nHelm: ${build.helm}\nCape: ${build.cape}", 14f)
+                        addText("Tônico: ${build.tonic}\nElixir: ${build.elixir}\nPoção/Scroll: ${build.potion}", 14f)
+                    } ?: addText("Build individual ainda não verificada.", 14f)
+                    addText("MECÂNICAS ESPECÍFICAS", 18f)
+                    guide.mechanics.forEachIndexed { index, mechanic -> addText("${index+1}. $mechanic", 14f) }
+                    addText("DICA: ${guide.tip}", 14f)
+                    addText("Referência offline; não é meta confirmado em tempo real. Valide mudanças de balanceamento.", 12f)
                 } else if (selectedUltra.isNotBlank()) {
-                    addText("Ainda não há um setup específico validado para $selectedUltra. Não vou apresentar a build de outro chefe como se fosse adequada.", 14f)
-                } else {
-                    addText("Selecione um Ultra para consultar a composição e os equipamentos recomendados.", 14f)
-                }
+                    addText("Guia deste Ultra ainda não validado; não exibiremos informações de outro chefe.", 14f)
+                } else addText("Selecione um Ultra para consultar o guia.", 14f)
             }
             "Forge" -> {
-                addText("FORGE & ENHANCEMENTS", 19f)
-                addText("Índice de enhancements sincronizado da AQW Wiki. Abra uma página para consultar os detalhes publicados.", 14f)
-                if (wikiEnhancements.isEmpty()) addText("Ainda não há dados locais. Sincronize a Wiki na aba Biblioteca.", 13f)
-                wikiEnhancements.filter { it.name.contains("Forge", true) }.forEach { entry ->
-                    addButton(entry.name) { openUrl(entry.url) }
+                addText("FORGE NATIVO • consulta offline", 19f)
+                UltraGuide.forges.forEach { forge ->
+                    addText("${forge.name} • ${forge.category}", 17f)
+                    addText(forge.description, 14f)
                 }
-                addText("Outras categorias", 16f)
-                wikiEnhancements.filterNot { it.name.contains("Forge", true) }.take(35).forEach { entry ->
-                    addButton(entry.name) { openUrl(entry.url) }
+                addText("Efeitos resumidos; requisitos e quests detalhados ainda serão ampliados.", 12f)
+            }
+            "Poções" -> {
+                addText("POÇÕES E CONSUMÍVEIS", 19f)
+                UltraGuide.consumables.forEach { potion ->
+                    addText(potion.name, 17f)
+                    addText(potion.note, 14f)
+                    addButton("Copiar /join ${potion.join}") { copyJoin("/join ${potion.join}") }
                 }
-                addText("A melhor combinação de arma, elmo e capa depende da classe e do contexto (solo, farm, grupo ou Ultra). Os dados dos itens vêm da Wiki; os melhores setups precisam de validação por classe e situação.", 14f)
-                addButton("Abrir índice completo de Enhancements") { openUrl(WikiDataRepository.ENHANCEMENTS_URL) }
             }
             else -> {
                 addText("BIBLIOTECA", 19f)
@@ -390,6 +354,35 @@ class MainActivity : Activity() {
             addView(ScrollView(this@MainActivity).apply { addView(list) }, LinearLayout.LayoutParams(-1, 650))
         }
         AlertDialog.Builder(this).setTitle(title).setView(wrapper).setNegativeButton("Fechar", null).show()
+    }
+
+    private fun copyJoin(value: String) {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AQW join", value))
+    }
+
+    private fun startBubble() {
+        if (!android.provider.Settings.canDrawOverlays(this)) {
+            AlertDialog.Builder(this).setTitle("Permissão para bolinha")
+                .setMessage("Autorize Exibir sobre outros aplicativos para usar o Companion durante o AQW.")
+                .setPositiveButton("Autorizar") { _, _ ->
+                    startActivity(Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")))
+                }.setNegativeButton("Cancelar", null).show()
+            return
+        }
+        try {
+            androidxPlaceholder()
+        } catch (error: Exception) {
+            AlertDialog.Builder(this).setTitle("Não foi possível abrir a bolinha")
+                .setMessage(error.localizedMessage ?: "Verifique as permissões do Android.")
+                .setPositiveButton("OK",null).show()
+        }
+    }
+
+    private fun androidxPlaceholder() {
+        if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(Intent(this, BubbleService::class.java))
+        else startService(Intent(this, BubbleService::class.java))
     }
 
     private fun saveSelection(key: String, value: String) {
