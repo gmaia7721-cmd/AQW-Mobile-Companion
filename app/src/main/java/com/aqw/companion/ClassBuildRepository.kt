@@ -59,15 +59,14 @@ object ClassBuildRepository {
         }
 
         val document = Jsoup.parse(html, SOURCE_URL)
-        val rows = document.select("p, li, tr, td, div")
-            .map { it.ownText().replace(Regex("\\s+"), " ").trim() }
+        val rows = document.select("p, li, tr, td, h2, h3, h4")
+            .map { it.text().replace(Regex("\\s+"), " ").trim() }
             .filter { it.length in 3..110 }
             .distinct()
 
         var currentSet = ""
         val parsed = linkedMapOf<String, ClassBuild>()
-        val rowPattern = Regex("^(.+?)\\s+(SpC(?:/AB|/HV)?|AB(?:/HV|/MV)?|MV(?:/HV|/SpC)?|HV)\\s*$", RegexOption.IGNORE_CASE)
-        val specialPattern = Regex("^(.+?)\\s+(.+)$")
+        val rowPattern = Regex("^(.+?)\\s+(SpC|AB|MV|HV)(?:\\s*/\\s*(SpC|AB|MV|HV))*\\s*$", RegexOption.IGNORE_CASE)
 
         for (row in rows) {
             val marker = row.trim().trimEnd(':').lowercase()
