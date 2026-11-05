@@ -143,12 +143,12 @@ class MainActivity : Activity() {
                 addText("BIBLIOTECA", 19f)
                 addText("Sincronização de dados públicos da AQW Wiki. Classes e enhancements ficam salvos localmente após uma atualização bem-sucedida.", 14f)
                 addText(wikiStatus, 13f)
-                addText("Classes encontradas: \${wikiClasses.size}", 14f)
-                addText("Páginas de enhancements encontradas: \${wikiEnhancements.size}", 14f)
+                addText("Classes encontradas: " + wikiClasses.size, 14f)
+                addText("Páginas de enhancements encontradas: " + wikiEnhancements.size, 14f)
                 addButton("Atualizar dados da Wiki agora") { refreshWikiData(showMessage = true) }
                 addButton("Abrir AQW Wiki") { openUrl("https://aqwwiki.wikidot.com/") }
                 addButton("Abrir guia de poções e alquimia") { openUrl("https://aqw.ewk.hu/potion/") }
-                addText("Última sincronização: \${formatTimestamp(WikiDataRepository.lastUpdated(this))}", 12f)
+                addText("Última sincronização: " + formatTimestamp(WikiDataRepository.lastUpdated(this)), 12f)
             }
         }
     }
@@ -162,7 +162,7 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     wikiClasses = result.classes
                     wikiEnhancements = result.enhancements
-                    wikiStatus = "Wiki atualizada: \${wikiClasses.size} classes e \${wikiEnhancements.size} páginas de enhancements."
+                    wikiStatus = "Wiki atualizada: " + wikiClasses.size + " classes e " + wikiEnhancements.size + " páginas de enhancements."
                     showSection(currentSection)
                     if (showMessage) AlertDialog.Builder(this)
                         .setTitle("Sincronização concluída")
@@ -171,7 +171,7 @@ class MainActivity : Activity() {
                 }
             } catch (error: Exception) {
                 runOnUiThread {
-                    wikiStatus = "Falha ao atualizar. Cache anterior preservado. \${error.localizedMessage ?: ""}"
+                    wikiStatus = "Falha ao atualizar. Cache anterior preservado. " + (error.localizedMessage ?: "")
                     showSection(currentSection)
                     if (showMessage) AlertDialog.Builder(this).setTitle("Não foi possível atualizar a Wiki")
                         .setMessage(wikiStatus).setPositiveButton("OK", null).show()
@@ -189,7 +189,7 @@ class MainActivity : Activity() {
             return
         }
         val loading = AlertDialog.Builder(this).setTitle("Consultando AQW Wiki")
-            .setMessage("Carregando a ficha de \${entry.name}…").setNegativeButton("Fechar", null).show()
+            .setMessage("Carregando a ficha de " + entry.name + "…").setNegativeButton("Fechar", null).show()
         Thread {
             try {
                 val pageText = WikiDataRepository.fetchPageText(entry.url)
