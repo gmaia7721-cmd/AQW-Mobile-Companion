@@ -62,6 +62,7 @@ class MainActivity : Activity() {
     private var selectedClass = ""
     private var selectedUltra = ""
     private var currentSection = "Classes"
+    private var tierCategory = "Classes"
     private var wikiStatus = "Dados da Wiki ainda não sincronizados."
     private var wikiClasses: List<WikiDataRepository.PageEntry> = emptyList()
     private var wikiEnhancements: List<WikiDataRepository.PageEntry> = emptyList()
@@ -100,7 +101,7 @@ class MainActivity : Activity() {
             setPadding(0, dp(6), 0, dp(3))
         })
         root.addView(TextView(this).apply {
-            text = "Classes • Forge • Ultras • Consumíveis"
+            text = "Classes • Forge • Ultras • Tier List"
             textSize = 13f
             setTextColor(muted)
             setPadding(0, 0, 0, dp(20))
@@ -110,7 +111,7 @@ class MainActivity : Activity() {
             background = rounded(panel, 18)
             setPadding(dp(4), dp(4), dp(4), dp(4))
         }
-        root.addView(nav)
+        root.addView(ScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(nav) })
         val scroll = ScrollView(this).apply { isFillViewport = false; clipToPadding = false }
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -129,7 +130,7 @@ class MainActivity : Activity() {
         currentSection = section
         content.removeAllViews()
         nav.removeAllViews()
-        listOf("Classes", "Ultras", "Forge", "Poções", "Biblioteca").forEach { tab ->
+        listOf("Classes", "Ultras", "Forge", "Poções", "Tier List", "Biblioteca").forEach { tab ->
             nav.addView(TextView(this).apply {
                 text = when(tab) { "Biblioteca" -> "Dados"; else -> tab }
                 gravity = android.view.Gravity.CENTER
@@ -139,7 +140,7 @@ class MainActivity : Activity() {
                 background = rounded(if (tab == section) accent else panel, 13)
                 setPadding(dp(3), dp(13), dp(3), dp(13))
                 setOnClickListener { showSection(tab) }
-            }, LinearLayout.LayoutParams(0, -2, 1f))
+            }, LinearLayout.LayoutParams(dp(if (tab == "Tier List") 90 else 80), -2))
         }
         if (section == "Ultras" || section == "Forge" || section == "Classes" || section == "Poções") {
             addButton("⚔ Ativar bolinha flutuante") { startBubble() }
@@ -179,6 +180,46 @@ class MainActivity : Activity() {
                 addButton("Atualizar recomendações de classes") { refreshClassBuildData(showMessage = true) }
                 addText("As recomendações aparecem aqui dentro do aplicativo e ficam salvas para consulta offline. A configuração de Ultra é uma base geral; confirme a função exigida pelo chefe e pela composição do grupo.", 13f)
                 addText("Dados gerais de classe e enhancements: AQW Wiki. Builds por classe: guia comunitário AQWG, integrado ao app.", 12f)
+            }
+            "Tier List" -> {
+                addText("TIER LIST • AQW", 19f)
+                addText("Ranking editorial inicial, não oficial nem sincronizado com o meta. Os tiers consideram utilidade geral, versatilidade e desempenho em conteúdo avançado. Rankings podem variar por situação.", 13f)
+                addButton("Categoria: $tierCategory • alterar") {
+                    chooseItem("Escolher categoria", listOf("Classes", "Espadas", "Armaduras")) {
+                        tierCategory = it
+                        showSection("Tier List")
+                    }
+                }
+                val tiers = when (tierCategory) {
+                    "Classes" -> listOf(
+                        Triple("S+", "Legion Revenant • ArchMage • Chaos Avenger • Lord of Order", "Referências de farm, solo e suporte. A melhor escolha depende do modo."),
+                        Triple("S", "Void Highlord • Arcana Invoker • ArchPaladin • StoneCrusher", "Muito fortes em funções específicas."),
+                        Triple("A", "Dragon of Time • LightCaster • Yami no Ronin • Blaze Binder", "Ótimas opções conforme conteúdo e equipamento."),
+                        Triple("B", "Shaman • Vampire Lord • Scarlet Sorceress", "Alternativas úteis, sobretudo em progressão."),
+                        Triple("C", "Mage • Warrior • Rogue • Healer", "Classes básicas; geralmente substituídas no endgame.")
+                    )
+                    "Espadas" -> listOf(
+                        Triple("S+", "Necrotic Sword of Doom (NSoD) • Exalted Apotheosis", "Referências de armas com bônus de dano. Compare o bônus efetivo contra o alvo."),
+                        Triple("S", "Dual Exalted Apotheosis • Blinding Light of Destiny", "Opções fortes; o bônus e a elegibilidade variam."),
+                        Triple("A", "Burning Blade of Abezeth • Burning Blade", "Boas opções de progressão para bônus geral."),
+                        Triple("B", "Armas com bônus situacional", "Podem superar tiers altos contra o tipo de monstro correto."),
+                        Triple("C", "Espadas apenas cosméticas", "Sem bônus próprio; o desempenho depende de outras fontes.")
+                    )
+                    else -> listOf(
+                        Triple("S+", "Infernal Flame Pyromancer • ArchFiend DoomLord", "Armaduras conhecidas por bônus ofensivos; confira os efeitos atuais."),
+                        Triple("S", "Armaduras com bônus racial elevado", "Podem ser superiores contra inimigos do tipo correspondente."),
+                        Triple("A", "Armaduras com bônus de dano moderado", "Úteis durante a progressão."),
+                        Triple("B", "Armaduras com bônus pequenos ou situacionais", "Dependem do inimigo e dos demais equipamentos."),
+                        Triple("C", "Armaduras cosméticas sem bônus", "Visual não determina desempenho.")
+                    )
+                }
+                tiers.forEach { (tier, names, reason) ->
+                    addText("TIER $tier", 18f)
+                    addText(names, 15f)
+                    addText(reason, 12f)
+                }
+                addText("Importante: espada e armadura não têm um ranking universal; bônus contra All, Tagged e tipos específicos podem mudar o resultado. Esta é uma primeira seleção, não uma lista completa de itens.", 12f)
+                addButton("Consultar AQW Wiki") { openUrl("https://aqwwiki.wikidot.com/") }
             }
             "Ultras" -> {
                 addText("ASSISTENTE DE ULTRAS", 19f)
