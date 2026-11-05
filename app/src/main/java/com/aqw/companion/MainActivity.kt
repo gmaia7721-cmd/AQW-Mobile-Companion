@@ -127,7 +127,7 @@ class MainActivity : Activity() {
         setContentView(root)
         showSection("Classes")
         refreshWikiData(showMessage = false)
-        // A fonte AQWG pode mudar o HTML; atualização manual evita falhas repetidas ao abrir.
+        refreshClassBuildData(showMessage = false)
         checkForUpdates()
     }
 
@@ -234,7 +234,7 @@ class MainActivity : Activity() {
                         }
                     }
                 }
-                addText(classBuildStatus, 12f)
+                addText(if (classBuildStatus.startsWith("Falha") || classBuildStatus.startsWith("Não foi possível")) "Recomendações indisponíveis. Toque em Builds para tentar novamente." else classBuildStatus, 12f)
                 addButton("Parar bolinha") { stopService(Intent(this, BubbleService::class.java)) }
             }
             "Tier List" -> {
