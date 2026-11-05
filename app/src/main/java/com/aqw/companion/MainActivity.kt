@@ -2,6 +2,8 @@ package com.aqw.companion
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.DownloadManager
+import android.os.Environment
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -232,6 +234,7 @@ class MainActivity : Activity() {
             }
             else -> {
                 addText("BIBLIOTECA", 19f)
+                addButton("Verificar atualização do aplicativo") { checkForUpdates() }
                 addText("Sincronização de dados públicos da AQW Wiki. Classes e enhancements ficam salvos localmente após uma atualização bem-sucedida.", 14f)
                 addText(wikiStatus, 13f)
                 addText("Classes encontradas: " + wikiClasses.size, 14f)
@@ -434,17 +437,41 @@ class MainActivity : Activity() {
                 connection.disconnect()
                 val release = JSONObject(body)
                 val remote = release.optString("tag_name").removePrefix("v")
+                val assets = release.optJSONArray("assets")
+                val apk = (0 until (assets?.length() ?: 0)).mapNotNull { assets?.optJSONObject(it) }.firstOrNull { it.optString("name").endsWith(".apk") }?.optString("browser_download_url").orEmpty()
                 val installed = packageManager.getPackageInfo(packageName, 0).versionName ?: "0.0"
                 if (remote.isNotBlank() && isNewerVersion(remote, installed)) {
                     runOnUiThread {
                         AlertDialog.Builder(this).setTitle("Nova atualização disponível")
-                            .setMessage("Versão instalada: $installed\nNova versão: $remote\nDeseja abrir a página para baixar?")
+                            .setMessage("Versão instalada: $installed\nNova versão: $remote\nDeseja baixar o APK sem abrir o GitHub?")
                             .setNegativeButton("Depois", null)
-                            .setPositiveButton("Baixar") { _, _ -> openUrl(release.optString("html_url")) }.show()
+                            .setPositiveButton("Baixar") { _, _ -> downloadUpdate(apk, remote) }.show()
                     }
                 }
             } catch (_: Exception) { }
         }.start()
+    }
+
+    private fun downloadUpdate(url: String, version: String) {
+        if (url.isBlank()) {
+            AlertDialog.Builder(this).setMessage("APK ainda indisponível.").setPositiveButton("OK",null).show()
+            return
+        }
+        try {
+            val request = DownloadManager.Request(Uri.parse(url))
+                .setTitle("AQW Companion v$version")
+                .setDescription("Toque no download concluído para instalar")
+                .setMimeType("application/vnd.android.package-archive")
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,"AQW-Companion-v$version.apk")
+            (getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).enqueue(request)
+            AlertDialog.Builder(this).setTitle("Download iniciado")
+                .setMessage("Quando terminar, toque na notificação de download para instalar a atualização.")
+                .setPositiveButton("OK",null).show()
+        } catch(e:Exception) {
+            AlertDialog.Builder(this).setMessage(e.localizedMessage ?: "Falha no download")
+                .setPositiveButton("OK",null).show()
+        }
     }
 
     private fun isNewerVersion(remote: String, installed: String): Boolean {
