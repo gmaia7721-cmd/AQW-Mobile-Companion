@@ -66,7 +66,7 @@ object ClassBuildRepository {
 
         var currentSet = ""
         val parsed = linkedMapOf<String, ClassBuild>()
-        val rowPattern = Regex("^(.+?)\\s+(SpC|AB|MV|HV)(?:\\s*/\\s*(SpC|AB|MV|HV))*\\s*$", RegexOption.IGNORE_CASE)
+        val rowPattern = Regex("^(.+?)\\s+((?:SpC|AB|MV|HV)(?:\\s*/\\s*(?:SpC|AB|MV|HV))*)\\s*$", RegexOption.IGNORE_CASE)
 
         for (row in rows) {
             val marker = row.trim().trimEnd(':').lowercase()
@@ -77,7 +77,7 @@ object ClassBuildRepository {
             val match = rowPattern.matchEntire(row)
             if (match != null && currentSet.isNotBlank()) {
                 val name = match.groupValues[1].trim().trimEnd('-', '–', ':')
-                val awe = match.groupValues[2].uppercase()
+                val awe = match.groupValues[2].replace(" ", "").uppercase()
                 if (name.length >= 2 && name.length <= 70) {
                     parsed[normalize(name)] = ClassBuild(name, currentSet, expandAwe(awe))
                 }
