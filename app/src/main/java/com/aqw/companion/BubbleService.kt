@@ -19,6 +19,9 @@ class BubbleService: Service() {
     private var tab="Ultras"
     private var selected="Ultra Dage"
     private var chosen="Chaos Avenger"
+    private var detail="Equipe"
+    private var selectedForge="Dauntless"
+    private var selectedPotion="Fate Tonic"
     private var xDown=0f
     private var yDown=0f
     private var initialX=0
@@ -88,64 +91,139 @@ class BubbleService: Service() {
             return
         }
         val header=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
-        header.addView(label("AQW COMPANION",16f),LinearLayout.LayoutParams(0,dp(43),1f))
+        header.addView(label("AQW • GUIA",15f),LinearLayout.LayoutParams(0,dp(40),1f))
         header.addView(button("—"){expanded=false;resize();render()})
         box.addView(header)
         val tabs=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
         listOf("Ultras","Classes","Forge","Poções").forEach { name->
-            tabs.addView(button(name){tab=name;render()},LinearLayout.LayoutParams(0,dp(43),1f))
+            val tabButton=button(name){tab=name;render()}.apply {
+                gravity=Gravity.CENTER
+                textSize=11f
+                setPadding(dp(2),dp(7),dp(2),dp(7))
+                if(tab==name)background=shape(0xFF4566C8.toInt(),10)
+            }
+            tabs.addView(tabButton,LinearLayout.LayoutParams(0,dp(36),1f).apply {marginEnd=dp(3)})
         }
         box.addView(tabs)
-        val scroll=ScrollView(this)
-        val body=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL}
+        val scroll=ScrollView(this).apply {fillViewport=false;isVerticalScrollBarEnabled=false}
+        val body=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(dp(3),dp(8),dp(3),dp(6))}
         scroll.addView(body)
         box.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
-        fun line(s:String){body.addView(label(s))}
-        fun item(s:String,action:()->Unit){body.addView(button(s,action),LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(5)})}
+        fun line(s:String){body.addView(label(s,12f))}
+        fun heading(s:String){body.addView(label(s,14f).apply{setTypeface(null,android.graphics.Typeface.BOLD)})}
+        fun item(s:String,action:()->Unit){
+            body.addView(button(s,action).apply{setPadding(dp(10),dp(10),dp(10),dp(10));textSize=12f},
+                LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(5)})
+        }
         fun copy(join:String){
-            (getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(android.content.ClipData.newPlainText("AQW",join))
+            (getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                .setPrimaryClip(android.content.ClipData.newPlainText("AQW",join))
+        }
+        fun chooser(title:String,names:List<String>,picked:(String)->Unit){
+            val dialog=AlertDialog.Builder(this@BubbleService)
+                .setTitle(title).setItems(names.toTypedArray()){_,i->picked(names[i]);render()}
+                .setNegativeButton("Fechar",null).create()
+            dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+            dialog.show()
         }
         when(tab){
             "Ultras"->{
-                item("Chefe: $selected  ▾"){
-                    val names=UltraGuide.bosses.map{it.name}.toTypedArray()
-                    AlertDialog.Builder(this@BubbleService).setTitle("Selecionar Ultra").setItems(names){_,which->
-                        selected=names[which];chosen=UltraGuide.bosses[which].team.first()
-                        getSharedPreferences("companion_settings",MODE_PRIVATE).edit().putString("selected_ultra",selected).apply()
-                        render()
-                    }.setNegativeButton("Fechar",null).create().apply{window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY);show() }
+                item("⚔  $selected   ▾"){
+                    chooser("Selecionar Ultra",UltraGuide.bosses.map{it.name}){name->
+                        selected=name
+                        chosen=UltraGuide.bosses.first{it.name==name}.team.first()
+                        detail="Equipe"
+                        getSharedPreferences("companion_settings",MODE_PRIVATE).edit()
+                            .putString("selected_ultra",selected).putString("selected_class",chosen).apply()
+                    }
                 }
-                val b=UltraGuide.bosses.firstOrNull{it.name==selected}?:UltraGuide.bosses[0]
-                item("Copiar /join ${b.join}"){copy("/join ${b.join}")}
-                line("EQUIPE • toque na classe")
-                b.team.forEachIndexed{i,c->item("${i+1}. $c — ${b.roles[i]}"){chosen=c;render()}}
-                line("BUILD: $chosen")
-                val build=UltraGuide.build(chosen)
-                if(build!=null){
-                    line("Weapon: ${build.weapon}\nClass: ${build.classEnh}\nHelm: ${build.helm}\nCape: ${build.cape}")
-                    line("Tônico: ${build.tonic}\nElixir: ${build.elixir}\nPoção: ${build.potion}")
-                }else line("Build individual ainda não verificada.")
-                line("MECÂNICAS")
-                b.mechanics.forEachIndexed{i,m->line("${i+1}. $m")}
-                line("DICA: ${b.tip}")
-                line("Estratégia de referência, sujeita a atualizações do jogo.")
+                val boss=UltraGuide.bosses.firstOrNull{it.name==selected}?:UltraGuide.bosses.first()
+                val subTabs=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
+                listOf("Equipe","Build","Boss").forEach { name->
+                    subTabs.addView(button(name){detail=name;render()}.apply{
+                        gravity=Gravity.CENTER;textSize=12f;setPadding(dp(2),dp(9),dp(2),dp(9))
+                        if(detail==name)background=shape(0xFF4566C8.toInt(),10)
+                    },LinearLayout.LayoutParams(0,dp(38),1f).apply{marginEnd=dp(3)})
+                }
+                body.addView(subTabs)
+                when(detail){
+                    "Equipe"->{
+                        heading("Composição recomendada")
+                        boss.team.forEachIndexed{i,c->
+                            item("${i+1}. $c\n${boss.roles[i]}"){
+                                chosen=c;detail="Build"
+                                getSharedPreferences("companion_settings",MODE_PRIVATE).edit().putString("selected_class",c).apply()
+                                render()
+                            }
+                        }
+                    }
+                    "Build"->{
+                        item("$chosen   ▾"){chooser("Classe da equipe",boss.team){chosen=it}}
+                        val build=UltraGuide.build(chosen)
+                        if(build==null)line("Build individual ainda não verificada.")
+                        else{
+                            heading("Enhancements")
+                            line("Arma: ${build.weapon}")
+                            line("Classe: ${build.classEnh}")
+                            line("Elmo: ${build.helm}")
+                            line("Capa: ${build.cape}")
+                            heading("Consumíveis")
+                            line("Tônico: ${build.tonic}")
+                            line("Elixir: ${build.elixir}")
+                            line("Poção: ${build.potion}")
+                        }
+                    }
+                    else->{
+                        heading("Mecânicas do chefe")
+                        boss.mechanics.forEachIndexed{i,m->line("${i+1}. $m")}
+                        heading("Dica")
+                        line(boss.tip)
+                    }
+                }
+                item("Copiar /join ${boss.join}"){copy("/join ${boss.join}")}
             }
             "Classes"->{
-                line("CLASSES • builds nativas de referência")
-                UltraGuide.bosses.flatMap{it.team}.distinct().sorted().forEach{c->
-                    item(c){chosen=c;render()}
+                item("Classe: $chosen   ▾"){
+                    chooser("Selecionar classe",UltraGuide.bosses.flatMap{it.team}.distinct().sorted()){chosen=it}
                 }
-                line("SELECIONADA: $chosen")
-                UltraGuide.build(chosen)?.let{line("Weapon: ${it.weapon}\nClass: ${it.classEnh}\nHelm: ${it.helm}\nCape: ${it.cape}\nTônico: ${it.tonic}\nElixir: ${it.elixir}\nPoção: ${it.potion}")}
+                UltraGuide.build(chosen)?.let {
+                    heading("Build de referência")
+                    line("Arma: ${it.weapon}")
+                    line("Classe: ${it.classEnh}")
+                    line("Elmo: ${it.helm}")
+                    line("Capa: ${it.cape}")
+                    heading("Consumíveis")
+                    line("Tônico: ${it.tonic}")
+                    line("Elixir: ${it.elixir}")
+                    line("Poção: ${it.potion}")
+                }?:line("Build ainda não verificada.")
             }
-            "Forge"->UltraGuide.forges.forEach{f->line("${f.name} • ${f.category}\n${f.description}")}
-            else->UltraGuide.consumables.forEach{p->item("${p.name} • /join ${p.join}\n${p.note}"){copy("/join ${p.join}")}}
+            "Forge"->{
+                item("Forge: $selectedForge   ▾"){
+                    chooser("Escolher Forge",UltraGuide.forges.map{it.name}){selectedForge=it}
+                }
+                UltraGuide.forges.firstOrNull{it.name==selectedForge}?.let{
+                    heading("${it.name} • ${it.category}")
+                    line(it.description)
+                }
+            }
+            else->{
+                item("Consumível: $selectedPotion   ▾"){
+                    chooser("Escolher consumível",UltraGuide.consumables.map{it.name}){selectedPotion=it}
+                }
+                UltraGuide.consumables.firstOrNull{it.name==selectedPotion}?.let{
+                    heading(it.name)
+                    line(it.note)
+                    item("Copiar /join ${it.join}"){copy("/join ${it.join}")}
+                }
+            }
         }
+        line("Guia offline de referência • sujeito a atualizações")
     }
     private fun resize(){
         val p=params?:return
-        p.width=if(expanded) dp(330).coerceAtMost(resources.displayMetrics.widthPixels-dp(16)) else dp(58)
-        p.height=if(expanded) (resources.displayMetrics.heightPixels*0.66).toInt() else dp(58)
+        p.width=if(expanded) dp(300).coerceAtMost(resources.displayMetrics.widthPixels-dp(24)) else dp(58)
+        p.height=if(expanded) (resources.displayMetrics.heightPixels*0.43).toInt().coerceAtLeast(dp(270)) else dp(58)
         p.x=p.x.coerceIn(0,(resources.displayMetrics.widthPixels-p.width).coerceAtLeast(0))
         root?.let{wm.updateViewLayout(it,p)}
     }
