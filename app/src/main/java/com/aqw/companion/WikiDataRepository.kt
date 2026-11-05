@@ -30,8 +30,8 @@ object WikiDataRepository {
     fun refresh(context: Context): SyncResult {
         val classes = scrapeIndex(CLASSES_URL, "classes")
         val enhancements = scrapeIndex(ENHANCEMENTS_URL, "enhancements")
-        require(classes.size >= 20) { "A Wiki retornou poucas classes (\${classes.size})." }
-        require(enhancements.size >= 10) { "A Wiki retornou poucos enhancements (\${enhancements.size})." }
+        require(classes.size >= 20) { "A Wiki retornou poucas classes (" + classes.size + ")." }
+        require(enhancements.size >= 10) { "A Wiki retornou poucos enhancements (" + enhancements.size + ")." }
 
         val now = System.currentTimeMillis()
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
