@@ -51,6 +51,7 @@ class MainActivity : Activity() {
     private var wikiStatus = "Dados da Wiki ainda não sincronizados."
     private var wikiClasses: List<WikiDataRepository.PageEntry> = emptyList()
     private var wikiEnhancements: List<WikiDataRepository.PageEntry> = emptyList()
+    private var classBuildStatus = "Recomendações ainda não sincronizadas."
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +60,7 @@ class MainActivity : Activity() {
         selectedUltra = prefs.getString("selected_ultra", "").orEmpty()
         wikiClasses = WikiDataRepository.cachedClasses(this)
         wikiEnhancements = WikiDataRepository.cachedEnhancements(this)
+        classBuildStatus = if (ClassBuildRepository.updatedAt(this) > 0L) "Recomendações de classes disponíveis offline." else "Toque em Atualizar recomendações para carregar os melhores setups."
         wikiStatus = if (WikiDataRepository.lastUpdated(this) > 0L) "Cache local da Wiki carregado."
             else "Sem cache local. Toque em Atualizar dados da Wiki."
 
@@ -85,6 +87,7 @@ class MainActivity : Activity() {
         setContentView(root)
         showSection("Classes")
         refreshWikiData(showMessage = false)
+        refreshClassBuildData(showMessage = false)
         checkForUpdates()
     }
 
@@ -103,12 +106,28 @@ class MainActivity : Activity() {
                         showSection("Classes")
                     }
                 }
-                if (selectedClass.isNotBlank()) addButton("Consultar ficha da classe na AQW Wiki") { loadSelectedClassPage() }
-                addText("Fonte: AQWorlds Wiki — índice de classes e páginas individuais.", 13f)
-                addText(wikiStatus, 12f)
-                addButton("Atualizar dados da Wiki") { refreshWikiData(showMessage = true) }
-                addText("A lista é sincronizada com a Wiki e salva no aparelho para consulta offline. A página individual pode conter habilidades, efeitos e informações da classe. Combos otimizados só serão indicados quando houver uma fonte específica validada.", 14f)
-                addButton("Abrir índice de classes da Wiki") { openUrl(WikiDataRepository.CLASSES_URL) }
+                if (selectedClass.isNotBlank()) {
+                    val build = ClassBuildRepository.find(this, selectedClass)
+                    if (build == null) {
+                        addText("Ainda não há uma recomendação sincronizada para esta classe.", 14f)
+                    } else {
+                        addText("ENHANCEMENTS RECOMENDADOS", 18f)
+                        addText("Base da classe: ${build.statSet} • Arma/Awe: ${build.aweTrait}", 14f)
+                        listOf("Farm", "Boss", "Ultra").forEach { mode ->
+                            val advice = ClassBuildRepository.advice(build, mode)
+                            addText("━━ ${advice.title.uppercase()} ━━", 16f)
+                            addText("Arma: ${advice.weapon}", 14f)
+                            addText("Classe: ${advice.classEnhancement}", 14f)
+                            addText("Elmo: ${advice.helm}", 14f)
+                            addText("Capa: ${advice.cape}", 14f)
+                            addText(advice.note, 12f)
+                        }
+                    }
+                }
+                addText(classBuildStatus, 12f)
+                addButton("Atualizar recomendações de classes") { refreshClassBuildData(showMessage = true) }
+                addText("As recomendações aparecem aqui dentro do aplicativo e ficam salvas para consulta offline. A configuração de Ultra é uma base geral; confirme a função exigida pelo chefe e pela composição do grupo.", 13f)
+                addText("Dados gerais de classe e enhancements: AQW Wiki. Builds por classe: guia comunitário AQWG, integrado ao app.", 12f)
             }
             "Ultras" -> {
                 addText("ASSISTENTE DE ULTRAS", 19f)
@@ -175,6 +194,32 @@ class MainActivity : Activity() {
                     showSection(currentSection)
                     if (showMessage) AlertDialog.Builder(this).setTitle("Não foi possível atualizar a Wiki")
                         .setMessage(wikiStatus).setPositiveButton("OK", null).show()
+                }
+            }
+        }.start()
+    }
+
+
+    private fun refreshClassBuildData(showMessage: Boolean) {
+        classBuildStatus = "Atualizando recomendações de classes…"
+        if (showMessage) showSection(currentSection)
+        Thread {
+            try {
+                val builds = ClassBuildRepository.refresh(this)
+                runOnUiThread {
+                    classBuildStatus = "Recomendações atualizadas: ${builds.size} classes."
+                    showSection(currentSection)
+                    if (showMessage) AlertDialog.Builder(this)
+                        .setTitle("Recomendações atualizadas")
+                        .setMessage(classBuildStatus + "\\nOs setups estão disponíveis dentro da aba Classes e também offline.")
+                        .setPositiveButton("OK", null).show()
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    classBuildStatus = "Falha ao atualizar recomendações. Cache anterior preservado. " + (error.localizedMessage ?: "")
+                    showSection(currentSection)
+                    if (showMessage) AlertDialog.Builder(this).setTitle("Não foi possível atualizar")
+                        .setMessage(classBuildStatus).setPositiveButton("OK", null).show()
                 }
             }
         }.start()
