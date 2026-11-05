@@ -5,6 +5,10 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.view.View
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
@@ -45,6 +49,14 @@ class MainActivity : Activity() {
     }
 
     private lateinit var content: LinearLayout
+    private lateinit var nav: LinearLayout
+    private val bg = Color.rgb(11, 16, 29)
+    private val panel = Color.rgb(24, 33, 51)
+    private val accent = Color.rgb(114, 150, 255)
+    private val muted = Color.rgb(166, 181, 207)
+    private val white = Color.rgb(239, 244, 255)
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+    private fun rounded(color: Int, radius: Int = 16) = GradientDrawable().apply { setColor(color); cornerRadius = dp(radius).toFloat() }
     private var selectedClass = ""
     private var selectedUltra = ""
     private var currentSection = "Classes"
@@ -64,24 +76,44 @@ class MainActivity : Activity() {
         wikiStatus = if (WikiDataRepository.lastUpdated(this) > 0L) "Cache local da Wiki carregado."
             else "Sem cache local. Toque em Atualizar dados da Wiki."
 
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(28, 36, 28, 24) }
-        root.addView(TextView(this).apply { textSize = 23f; text = "AQW Mobile Companion" })
+        window.statusBarColor = bg
+        window.navigationBarColor = bg
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(20), dp(16), dp(12))
+            setBackgroundColor(bg)
+        }
         root.addView(TextView(this).apply {
-            text = "Seu assistente de classes, combos, Forge e Ultras"
-            textSize = 14f
-            setPadding(0, 6, 0, 20)
+            text = "AQW  /  COMPANION"
+            textSize = 12f
+            letterSpacing = 0.18f
+            setTextColor(accent)
+            typeface = Typeface.DEFAULT_BOLD
         })
-        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        listOf("Classes", "Ultras", "Forge", "Biblioteca").forEach { tab ->
-            nav.addView(Button(this).apply {
-                text = tab
-                textSize = 11f
-                setOnClickListener { showSection(tab) }
-            }, LinearLayout.LayoutParams(0, -2, 1f))
+        root.addView(TextView(this).apply {
+            textSize = 26f
+            text = "Seu guia de batalha"
+            setTextColor(white)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(0, dp(6), 0, dp(3))
+        })
+        root.addView(TextView(this).apply {
+            text = "Classes • Forge • Ultras • Consumíveis"
+            textSize = 13f
+            setTextColor(muted)
+            setPadding(0, 0, 0, dp(20))
+        })
+        nav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = rounded(panel, 18)
+            setPadding(dp(4), dp(4), dp(4), dp(4))
         }
         root.addView(nav)
-        val scroll = ScrollView(this)
-        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 18, 0, 8) }
+        val scroll = ScrollView(this).apply { isFillViewport = false; clipToPadding = false }
+        content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(18), 0, dp(20))
+        }
         scroll.addView(content)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
@@ -94,6 +126,19 @@ class MainActivity : Activity() {
     private fun showSection(section: String) {
         currentSection = section
         content.removeAllViews()
+        nav.removeAllViews()
+        listOf("Classes", "Ultras", "Forge", "Biblioteca").forEach { tab ->
+            nav.addView(TextView(this).apply {
+                text = when(tab) { "Biblioteca" -> "Dados"; else -> tab }
+                gravity = android.view.Gravity.CENTER
+                textSize = 12f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(if (tab == section) bg else muted)
+                background = rounded(if (tab == section) accent else panel, 13)
+                setPadding(dp(3), dp(13), dp(3), dp(13))
+                setOnClickListener { showSection(tab) }
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+        }
         when (section) {
             "Classes" -> {
                 addText("CLASSES", 19f)
@@ -338,11 +383,32 @@ class MainActivity : Activity() {
     }
 
     private fun addText(value: String, size: Float) {
-        content.addView(TextView(this).apply { text = value; textSize = size; setPadding(0, 8, 0, 12) })
+        val heading = size >= 17f || value.startsWith("━━") || value.startsWith("SETUP:")
+        val detail = value.contains("\\n") || value.startsWith("Arma:") || value.startsWith("Tônico:") ||
+            value.startsWith("Função:") || value.startsWith("MECÂNICAS:")
+        content.addView(TextView(this).apply {
+            text = value
+            textSize = size
+            setTextColor(if (heading) white else muted)
+            if (heading) typeface = Typeface.DEFAULT_BOLD
+            setLineSpacing(dp(3).toFloat(), 1f)
+            setPadding(dp(if (detail) 14 else 6), dp(if (detail) 14 else 8), dp(if (detail) 14 else 6), dp(if (detail) 14 else 10))
+            if (detail) background = rounded(panel, 14)
+        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(if (detail) 9 else 2) })
     }
 
     private fun addButton(value: String, action: () -> Unit) {
-        content.addView(Button(this).apply { text = value; setOnClickListener { action() } })
+        val selected = value.endsWith(" ✓")
+        content.addView(TextView(this).apply {
+            text = if (selected) "✓  " + value.removeSuffix(" ✓") else value + "   ›"
+            textSize = 14f
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(if (selected) bg else white)
+            background = rounded(if (selected) accent else panel, 14)
+            setPadding(dp(16), dp(15), dp(14), dp(15))
+            setOnClickListener { action() }
+        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
     }
 
     private fun formatTimestamp(timestamp: Long): String =
