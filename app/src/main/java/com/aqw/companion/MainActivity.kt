@@ -230,6 +230,20 @@ class MainActivity : Activity() {
                             addText("Mantenha o Decay com a skill 5 na fase de regeneração.", 13f)
                         }
                     }
+                    addText("ONDE CONSEGUIR OS CONSUMÍVEIS", 18f)
+                    addText("Poções, tônicos e elixires: /join alchemyacademy\\nFale com Alina e abra a loja Gebo. Você também pode preparar os consumíveis pelo sistema de Alchemy.", 14f)
+                    addText("Fate Tonic: loja Gebo ou Alchemy. Versão normal: requer Rank 8 Alchemy.\\nBody Tonic: loja Gebo ou Alchemy. Versão normal: requer Rank 8 Alchemy.", 14f)
+                    addText("Potent Destruction Elixir: loja Gebo (Gold Voucher 500k x2 + 2.000 Gold para 8 unidades) ou Alchemy.", 14f)
+                    addText("Potent Honor Potion: loja Gebo (Gold Voucher 500k x1 para 5 unidades) ou Alchemy. Requer Rank 10 Good.", 14f)
+                    addText("Scroll of Enrage: /join dragonrune\\nFaça o SpellCrafting com Zealous Ink. Não é vendido como poção na Alchemy Academy.", 14f)
+                    addButton("Copiar /join alchemyacademy") { run {
+                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AQW join", "/join alchemyacademy"))
+                    } }
+                    addButton("Copiar /join dragonrune") {
+                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AQW join", "/join dragonrune"))
+                    }
                     addText("MECÂNICAS: não use curas normais sob Noxious Decay; Health Vamp/lifesteal funciona. Mova-se para a plataforma iluminada. Cada morte cura 500 mil HP do chefe.", 14f)
                     addText("Setups recomendados pela comunidade, sujeitos a ajustes conforme a equipe, o nível e as atualizações do AQW.", 12f)
                 } else if (selectedUltra.isNotBlank()) {
