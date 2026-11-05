@@ -105,7 +105,7 @@ class BubbleService: Service() {
             tabs.addView(tabButton,LinearLayout.LayoutParams(0,dp(36),1f).apply {marginEnd=dp(3)})
         }
         box.addView(tabs)
-        val scroll=ScrollView(this).apply {fillViewport=false;isVerticalScrollBarEnabled=false}
+        val scroll=ScrollView(this).apply {isFillViewport=false;isVerticalScrollBarEnabled=false}
         val body=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(dp(3),dp(8),dp(3),dp(6))}
         scroll.addView(body)
         box.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
