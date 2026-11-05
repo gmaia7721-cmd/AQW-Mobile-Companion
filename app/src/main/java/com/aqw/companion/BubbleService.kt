@@ -199,6 +199,13 @@ class BubbleService: Service() {
                 item("Classe: $chosen   ▾"){showClassPicker=!showClassPicker;render()}
                 if(showClassPicker){
                     line("Catálogo: ${allClasses.size} classes • toque para selecionar")
+                    val results=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+                    fun showMatches(query:String){
+                        results.removeAllViews()
+                        allClasses.filter{it.contains(query,true)}.take(40).forEach{c->
+                            results.addView(button(c){chosen=c;showClassPicker=false;render()})
+                        }
+                    }
                     val input=EditText(this).apply{
                         hint="Pesquisar classe..."
                         setSingleLine(true)
@@ -211,15 +218,14 @@ class BubbleService: Service() {
                             override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
                             override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){
                                 classSearch=s.toString()
-                                val matches=allClasses.filter{it.contains(classSearch,true)}.take(40)
-                                // A lista é atualizada quando o campo perde o foco.
+                                showMatches(classSearch)
                             }
                             override fun afterTextChanged(s:android.text.Editable?){}
                         })
                     }
                     body.addView(input)
-                    val matches=allClasses.filter{it.contains(classSearch,true)}.take(40)
-                    matches.forEach{c->item(c){chosen=c;showClassPicker=false;render()}}
+                    showMatches(classSearch)
+                    body.addView(results)
                     if(allClasses.size>40)line("Mostrando até 40 resultados. Digite para filtrar.")
                 } else {
                     val build=UltraGuide.build(chosen)
