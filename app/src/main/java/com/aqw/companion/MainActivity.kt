@@ -213,9 +213,14 @@ class MainActivity : Activity() {
                         Triple("C", "Armaduras cosméticas sem bônus", "Visual não determina desempenho.")
                     )
                 }
+                val categoryIcon = when (tierCategory) {
+                    "Espadas" -> "⚔"
+                    "Armaduras" -> "🛡"
+                    else -> "✦"
+                }
                 tiers.forEach { (tier, names, reason) ->
-                    addText("TIER $tier", 18f)
-                    addText(names, 15f)
+                    addText("$categoryIcon  TIER $tier", 18f)
+                    addText("$categoryIcon  $names", 15f)
                     addText(reason, 12f)
                 }
                 addText("Importante: espada e armadura não têm um ranking universal; bônus contra All, Tagged e tipos específicos podem mudar o resultado. Esta é uma primeira seleção, não uma lista completa de itens.", 12f)
