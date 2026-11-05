@@ -12,6 +12,7 @@ import android.widget.*
 
 /** Lightweight game overlay; does not capture the screen or interact with the game. */
 class BubbleService: Service() {
+    companion object { const val ACTION_STOP = "com.aqw.companion.STOP_BUBBLE" }
     private lateinit var wm: WindowManager
     private var root: LinearLayout? = null
     private var params: WindowManager.LayoutParams? = null
@@ -34,7 +35,13 @@ class BubbleService: Service() {
         wm=getSystemService(WINDOW_SERVICE) as WindowManager
         val channel="aqw_bubble"
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(NotificationChannel(channel,"AQW Companion flutuante",NotificationManager.IMPORTANCE_LOW))
-        val notification=Notification.Builder(this,channel).setContentTitle("AQW Companion").setContentText("Toque na bolinha para consultar os guias").setSmallIcon(android.R.drawable.ic_menu_info_details).setOngoing(true).build()
+        val stopIntent=Intent(this,BubbleService::class.java).setAction(ACTION_STOP)
+        val stopPending=PendingIntent.getService(this,58,stopIntent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val notification=Notification.Builder(this,channel).setContentTitle("AQW Companion")
+            .setContentText("Bolinha ativa • toque em Encerrar para remover")
+            .setSmallIcon(android.R.drawable.ic_menu_info_details)
+            .addAction(Notification.Action.Builder(null,"Encerrar",stopPending).build())
+            .setOngoing(true).build()
         if(Build.VERSION.SDK_INT>=34) startForeground(57,notification,android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         else startForeground(57,notification)
         val prefs=getSharedPreferences("companion_settings",MODE_PRIVATE)
@@ -92,7 +99,8 @@ class BubbleService: Service() {
         }
         val header=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
         header.addView(label("AQW • GUIA",15f),LinearLayout.LayoutParams(0,dp(40),1f))
-        header.addView(button("—"){expanded=false;resize();render()})
+        header.addView(button("×"){stopSelf()}.apply {contentDescription="Encerrar bolinha"})
+        header.addView(button("—"){expanded=false;resize();render()}.apply {contentDescription="Minimizar bolinha"})
         box.addView(header)
         val tabs=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
         listOf("Ultras","Classes","Forge","Poções").forEach { name->
@@ -227,7 +235,13 @@ class BubbleService: Service() {
         p.x=p.x.coerceIn(0,(resources.displayMetrics.widthPixels-p.width).coerceAtLeast(0))
         root?.let{wm.updateViewLayout(it,p)}
     }
-    override fun onStartCommand(intent:Intent?,flags:Int,startId:Int)=START_STICKY
+    override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int {
+        if(intent?.action==ACTION_STOP) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        return START_NOT_STICKY
+    }
     override fun onDestroy(){root?.let{wm.removeView(it)};root=null;super.onDestroy()}
     override fun onBind(intent:Intent?):IBinder?=null
 }
