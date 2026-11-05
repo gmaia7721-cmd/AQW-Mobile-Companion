@@ -31,7 +31,24 @@ class BubbleService: Service() {
     private var initialX=0
     private var initialY=0
     private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
-    private fun shape(color:Int,r:Int=15)=GradientDrawable().apply { setColor(color);cornerRadius=dp(r).toFloat() }
+    private val gold = 0xFFDEAF52.toInt()
+    private val panel = 0xFF20252E.toInt()
+    private val muted = 0xFFADB5C2.toInt()
+    private fun shape(color:Int,r:Int=12)=GradientDrawable().apply { setColor(color);cornerRadius=dp(r).toFloat() }
+    private fun card(title:String,subtitle:String?=null):LinearLayout = LinearLayout(this).apply {
+        orientation=LinearLayout.VERTICAL
+        background=shape(panel,12)
+        setPadding(dp(12),dp(9),dp(12),dp(9))
+        addView(label(title,14f).apply {
+            setTextColor(gold)
+            setTypeface(null,android.graphics.Typeface.BOLD)
+            setPadding(0,0,0,0)
+        })
+        if(subtitle!=null)addView(label(subtitle,11f).apply {
+            setTextColor(muted)
+            setPadding(0,dp(3),0,0)
+        })
+    }
     override fun onCreate() {
         super.onCreate()
         if(!Settings.canDrawOverlays(this)){stopSelf();return}
@@ -60,21 +77,22 @@ class BubbleService: Service() {
         render()
     }
     private fun label(s:String,size:Float=13f)=TextView(this).apply {
-        text=s;textSize=size;setTextColor(Color.WHITE);setPadding(dp(8),dp(7),dp(8),dp(7))
+        text=s;textSize=size;setTextColor(0xFFF1F5FF.toInt());setPadding(dp(7),dp(6),dp(7),dp(6))
     }
     private fun button(s:String,action:()->Unit):TextView=label(s).apply {
-        background=shape(0xFF2A3E65.toInt(),10)
+        background=shape(panel,9)
         setOnClickListener {action()}
     }
     private fun render(){
         val box=root?:return
         box.removeAllViews()
-        box.setPadding(dp(5),dp(5),dp(5),dp(5))
-        box.background=shape(0xF0121C30.toInt(),17)
+        box.setPadding(dp(7),dp(7),dp(7),dp(7))
+        box.background=GradientDrawable().apply { setColor(0xF80D1118.toInt());cornerRadius=dp(16).toFloat();setStroke(dp(1),0xFF66502D.toInt()) }
         if(!expanded){
             val bubble=label("⚔",25f).apply {
                 gravity=Gravity.CENTER
-                background=shape(0xFF4566C8.toInt(),40)
+                background=shape(0xFF574321.toInt(),40)
+                setTextColor(gold)
                 setPadding(0,0,0,0)
                 setOnTouchListener(object:View.OnTouchListener {
                     private var moved=false
@@ -101,9 +119,9 @@ class BubbleService: Service() {
             return
         }
         val header=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
-        header.addView(label("AQW • GUIA",15f),LinearLayout.LayoutParams(0,dp(40),1f))
-        header.addView(button("×"){stopSelf()}.apply {contentDescription="Encerrar bolinha"})
+        header.addView(label("⚔  AQW COMPANION",14f).apply { setTextColor(gold);setTypeface(null,android.graphics.Typeface.BOLD) },LinearLayout.LayoutParams(0,dp(38),1f))
         header.addView(button("—"){expanded=false;resize();render()}.apply {contentDescription="Minimizar bolinha"})
+        header.addView(button("×"){stopSelf()}.apply {contentDescription="Encerrar bolinha"})
         box.addView(header)
         val tabs=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
         listOf("Ultras","Classes","Forge","Poções").forEach { name->
@@ -111,7 +129,7 @@ class BubbleService: Service() {
                 gravity=Gravity.CENTER
                 textSize=11f
                 setPadding(dp(2),dp(7),dp(2),dp(7))
-                if(tab==name)background=shape(0xFF4566C8.toInt(),10)
+                if(tab==name){background=shape(0xFF574321.toInt(),9);setTextColor(0xFFF7D48A.toInt())}else setTextColor(muted)
             }
             tabs.addView(tabButton,LinearLayout.LayoutParams(0,dp(36),1f).apply {marginEnd=dp(3)})
         }
@@ -121,9 +139,9 @@ class BubbleService: Service() {
         scroll.addView(body)
         box.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         fun line(s:String){body.addView(label(s,12f))}
-        fun heading(s:String){body.addView(label(s,14f).apply{setTypeface(null,android.graphics.Typeface.BOLD)})}
+        fun heading(s:String){body.addView(label(s,13f).apply{setTextColor(gold);setTypeface(null,android.graphics.Typeface.BOLD)})}
         fun item(s:String,action:()->Unit){
-            body.addView(button(s,action).apply{setPadding(dp(10),dp(10),dp(10),dp(10));textSize=12f},
+            body.addView(button(s,action).apply{setPadding(dp(12),dp(11),dp(12),dp(11));textSize=12f},
                 LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(5)})
         }
         fun copy(join:String){
@@ -153,7 +171,7 @@ class BubbleService: Service() {
                 listOf("Equipe","Build","Boss").forEach { name->
                     subTabs.addView(button(name){detail=name;render()}.apply{
                         gravity=Gravity.CENTER;textSize=12f;setPadding(dp(2),dp(9),dp(2),dp(9))
-                        if(detail==name)background=shape(0xFF4566C8.toInt(),10)
+                        if(detail==name){background=shape(0xFF574321.toInt(),9);setTextColor(0xFFF7D48A.toInt())}
                     },LinearLayout.LayoutParams(0,dp(38),1f).apply{marginEnd=dp(3)})
                 }
                 body.addView(subTabs)
@@ -197,7 +215,7 @@ class BubbleService: Service() {
                 val allClasses=(WikiDataRepository.cachedClasses(this).map{it.name}
                     +ClassBuildRepository.cached(this).map{it.className}
                     +UltraGuide.bosses.flatMap{it.team}).distinct().sortedWith(String.CASE_INSENSITIVE_ORDER)
-                item("Classe: $chosen   ▾"){showClassPicker=!showClassPicker;resize();render()}
+                item("⚔  $chosen   ▾"){showClassPicker=!showClassPicker;resize();render()}
                 if(showClassPicker){
                     line("Catálogo: ${allClasses.size} classes • toque para selecionar")
                     val results=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
@@ -233,7 +251,7 @@ class BubbleService: Service() {
                     listOf("Farm","Boss","Ultra").forEach{mode->
                         modes.addView(button(mode){classMode=mode;render()}.apply{
                             gravity=Gravity.CENTER
-                            if(classMode==mode)background=shape(0xFF4566C8.toInt(),10)
+                            if(classMode==mode){background=shape(0xFF574321.toInt(),9);setTextColor(0xFFF7D48A.toInt())}
                         },LinearLayout.LayoutParams(0,dp(36),1f))
                     }
                     body.addView(modes)
@@ -289,13 +307,13 @@ class BubbleService: Service() {
                 }
             }
         }
-        line("Guia offline de referência • sujeito a atualizações")
+        body.addView(label("GUIA DE REFERÊNCIA  •  AQW",10f).apply { setTextColor(muted);gravity=Gravity.CENTER })
     }
     private fun resize(){
         val p=params?:return
         p.flags=if(expanded && tab=="Classes" && showClassPicker) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         p.softInputMode=WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
-        p.width=if(expanded) dp(300).coerceAtMost(resources.displayMetrics.widthPixels-dp(24)) else dp(58)
+        p.width=if(expanded) dp(320).coerceAtMost(resources.displayMetrics.widthPixels-dp(24)) else dp(58)
         p.height=if(expanded) (resources.displayMetrics.heightPixels*0.43).toInt().coerceAtLeast(dp(270)) else dp(58)
         p.x=p.x.coerceIn(0,(resources.displayMetrics.widthPixels-p.width).coerceAtLeast(0))
         root?.let{wm.updateViewLayout(it,p)}
