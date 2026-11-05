@@ -23,6 +23,8 @@ class BubbleService: Service() {
     private var detail="Equipe"
     private var selectedForge="Dauntless"
     private var selectedPotion="Fate Tonic"
+    private var classSearch=""
+    private var showClassPicker=false
     private var xDown=0f
     private var yDown=0f
     private var initialX=0
@@ -191,20 +193,58 @@ class BubbleService: Service() {
                 item("Copiar /join ${boss.join}"){copy("/join ${boss.join}")}
             }
             "Classes"->{
-                item("Classe: $chosen   ▾"){
-                    chooser("Selecionar classe",UltraGuide.bosses.flatMap{it.team}.distinct().sorted()){chosen=it}
+                val allClasses=(WikiDataRepository.cachedClasses(this).map{it.name}
+                    +ClassBuildRepository.cached(this).map{it.className}
+                    +UltraGuide.bosses.flatMap{it.team}).distinct().sortedWith(String.CASE_INSENSITIVE_ORDER)
+                item("Classe: $chosen   ▾"){showClassPicker=!showClassPicker;render()}
+                if(showClassPicker){
+                    line("Catálogo: ${allClasses.size} classes • toque para selecionar")
+                    val input=EditText(this).apply{
+                        hint="Pesquisar classe..."
+                        setSingleLine(true)
+                        textSize=13f
+                        setTextColor(Color.WHITE)
+                        setHintTextColor(0xFFB0BCD0.toInt())
+                        setText(classSearch)
+                        setSelectAllOnFocus(false)
+                        addTextChangedListener(object:android.text.TextWatcher{
+                            override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
+                            override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){
+                                classSearch=s.toString()
+                                val matches=allClasses.filter{it.contains(classSearch,true)}.take(40)
+                                // A lista é atualizada quando o campo perde o foco.
+                            }
+                            override fun afterTextChanged(s:android.text.Editable?){}
+                        })
+                    }
+                    body.addView(input)
+                    val matches=allClasses.filter{it.contains(classSearch,true)}.take(40)
+                    matches.forEach{c->item(c){chosen=c;showClassPicker=false;render()}}
+                    if(allClasses.size>40)line("Mostrando até 40 resultados. Digite para filtrar.")
+                } else {
+                    val build=UltraGuide.build(chosen)
+                    if(build!=null){
+                        heading("Build Ultra de referência")
+                        line("Arma: ${build.weapon}")
+                        line("Classe: ${build.classEnh}")
+                        line("Elmo: ${build.helm}")
+                        line("Capa: ${build.cape}")
+                        heading("Consumíveis")
+                        line("Tônico: ${build.tonic}")
+                        line("Elixir: ${build.elixir}")
+                        line("Poção: ${build.potion}")
+                    }else{
+                        val general=ClassBuildRepository.find(this,chosen)
+                        if(general!=null){
+                            heading("Build geral de referência")
+                            line("Enhancement: ${general.statSet}")
+                            line("Awe: ${general.aweTrait}")
+                            line("Configuração específica ainda não validada.")
+                        }else line("Classe no catálogo. Build ainda não verificada.")
+                    }
                 }
-                UltraGuide.build(chosen)?.let {
-                    heading("Build de referência")
-                    line("Arma: ${it.weapon}")
-                    line("Classe: ${it.classEnh}")
-                    line("Elmo: ${it.helm}")
-                    line("Capa: ${it.cape}")
-                    heading("Consumíveis")
-                    line("Tônico: ${it.tonic}")
-                    line("Elixir: ${it.elixir}")
-                    line("Poção: ${it.potion}")
-                }?:line("Build ainda não verificada.")
+                if(WikiDataRepository.cachedClasses(this).isEmpty())
+                    line("Sincronize a AQW Wiki na aba Dados do aplicativo para ampliar o catálogo.")
             }
             "Forge"->{
                 item("Forge: $selectedForge   ▾"){
