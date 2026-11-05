@@ -147,15 +147,40 @@ class MainActivity : Activity() {
                 setOnClickListener { showSection(tab) }
             }, LinearLayout.LayoutParams(dp(if (tab == "Tier List") 90 else 80), -2))
         }
-        if (section == "Ultras" || section == "Forge" || section == "Classes" || section == "Poções") {
+        if (section == "Ultras" || section == "Forge" || section == "Poções") {
             addButton("⚔ Ativar bolinha flutuante") { startBubble() }
             addButton("Parar bolinha") { stopService(Intent(this, BubbleService::class.java)) }
         }
         when (section) {
             "Classes" -> {
                 addText("CLASSES", 19f)
-                addText(if (selectedClass.isBlank()) "Nenhuma classe selecionada" else "Classe selecionada: $selectedClass", 16f)
-                addButton("Selecionar classe") {
+                val card = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    background = rounded(panel, 12)
+                    setPadding(dp(12), dp(14), dp(12), dp(14))
+                }
+                card.addView(TextView(this).apply {
+                    text = "⚔"
+                    textSize = 24f
+                    setTextColor(accent)
+                    setPadding(0, 0, dp(14), 0)
+                })
+                card.addView(LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(TextView(this@MainActivity).apply {
+                        text = selectedClass.ifBlank { "Selecionar classe" }
+                        textSize = 17f
+                        typeface = Typeface.DEFAULT_BOLD
+                        setTextColor(white)
+                    })
+                    addView(TextView(this@MainActivity).apply {
+                        text = "Toque para escolher uma classe  ›"
+                        textSize = 12f
+                        setTextColor(muted)
+                    })
+                }, LinearLayout.LayoutParams(0, -2, 1f))
+                card.setOnClickListener {
                     val options = wikiClasses.map { it.name }.ifEmpty { fallbackClasses }
                     chooseItem("Escolha sua classe", options) {
                         selectedClass = it
@@ -163,13 +188,41 @@ class MainActivity : Activity() {
                         showSection("Classes")
                     }
                 }
-                if (selectedClass.isNotBlank()) {
+                content.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
+                val shortcuts = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                fun shortcut(title: String, subtitle: String, action: () -> Unit): LinearLayout {
+                    return LinearLayout(this).apply {
+                        orientation = LinearLayout.VERTICAL
+                        background = rounded(panel, 10)
+                        setPadding(dp(12), dp(12), dp(8), dp(12))
+                        addView(TextView(this@MainActivity).apply {
+                            text = title
+                            textSize = 14f
+                            typeface = Typeface.DEFAULT_BOLD
+                            setTextColor(accent)
+                        })
+                        addView(TextView(this@MainActivity).apply {
+                            text = subtitle
+                            textSize = 11f
+                            setTextColor(muted)
+                        })
+                        setOnClickListener { action() }
+                    }
+                }
+                shortcuts.addView(shortcut("⚔ Bolinha", "Ativar assistente") { startBubble() },
+                    LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(6) })
+                shortcuts.addView(shortcut("↻ Builds", "Sincronizar dados") { refreshClassBuildData(showMessage = true) },
+                    LinearLayout.LayoutParams(0, -2, 1f))
+                content.addView(shortcuts, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
+                addText("RECOMENDAÇÕES", 18f)
+                if (selectedClass.isBlank()) {
+                    addText("Selecione uma classe para consultar as recomendações.", 14f)
+                } else {
                     val build = ClassBuildRepository.find(this, selectedClass)
                     if (build == null) {
-                        addText("Ainda não há uma recomendação sincronizada para esta classe.", 14f)
+                        addText("Build individual ainda não sincronizada para $selectedClass.", 14f)
                     } else {
-                        addText("ENHANCEMENTS RECOMENDADOS", 18f)
-                        addText("Base da classe: ${build.statSet} • Arma/Awe: ${build.aweTrait}", 14f)
+                        addText("Base: ${build.statSet} • Awe: ${build.aweTrait}", 14f)
                         listOf("Farm", "Boss", "Ultra").forEach { mode ->
                             val advice = ClassBuildRepository.advice(build, mode)
                             addText("━━ ${advice.title.uppercase()} ━━", 16f)
@@ -182,9 +235,7 @@ class MainActivity : Activity() {
                     }
                 }
                 addText(classBuildStatus, 12f)
-                addButton("Atualizar recomendações de classes") { refreshClassBuildData(showMessage = true) }
-                addText("As recomendações aparecem aqui dentro do aplicativo e ficam salvas para consulta offline. A configuração de Ultra é uma base geral; confirme a função exigida pelo chefe e pela composição do grupo.", 13f)
-                addText("Dados gerais de classe e enhancements: AQW Wiki. Builds por classe: guia comunitário AQWG, integrado ao app.", 12f)
+                addButton("Parar bolinha") { stopService(Intent(this, BubbleService::class.java)) }
             }
             "Tier List" -> {
                 addText("TIER LIST • AQW", 19f)
