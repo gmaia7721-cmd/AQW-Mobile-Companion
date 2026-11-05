@@ -23,6 +23,7 @@ class BubbleService: Service() {
     private var detail="Equipe"
     private var selectedForge="Dauntless"
     private var selectedPotion="Fate Tonic"
+    private var classMode="Farm"
     private var classSearch=""
     private var showClassPicker=false
     private var xDown=0f
@@ -228,7 +229,15 @@ class BubbleService: Service() {
                     body.addView(results)
                     if(allClasses.size>40)line("Mostrando até 40 resultados. Digite para filtrar.")
                 } else {
-                    val build=UltraGuide.build(chosen)
+                    val modes=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
+                    listOf("Farm","Boss","Ultra").forEach{mode->
+                        modes.addView(button(mode){classMode=mode;render()}.apply{
+                            gravity=Gravity.CENTER
+                            if(classMode==mode)background=shape(0xFF4566C8.toInt(),10)
+                        },LinearLayout.LayoutParams(0,dp(36),1f))
+                    }
+                    body.addView(modes)
+                    val build=if(classMode=="Ultra")UltraGuide.build(chosen) else null
                     if(build!=null){
                         heading("Build Ultra de referência")
                         line("Arma: ${build.weapon}")
@@ -242,11 +251,19 @@ class BubbleService: Service() {
                     }else{
                         val general=ClassBuildRepository.find(this,chosen)
                         if(general!=null){
-                            heading("Build geral de referência")
-                            line("Enhancement: ${general.statSet}")
-                            line("Awe: ${general.aweTrait}")
-                            line("Configuração específica ainda não validada.")
-                        }else line("Classe no catálogo. Build ainda não verificada.")
+                            val advice=ClassBuildRepository.advice(general,classMode)
+                            heading("Sugestão de ${advice.title} • não validada individualmente")
+                            line("Arma: ${advice.weapon}")
+                            line("Classe: ${advice.classEnhancement}")
+                            line("Elmo: ${advice.helm}")
+                            line("Capa: ${advice.cape}")
+                            line(advice.note)
+                            heading("Combo e consumíveis")
+                            line("Ainda sem recomendação específica validada.")
+                        }else {
+                            heading("Classe disponível no catálogo")
+                            line("Build, combo e consumíveis ainda não verificados.")
+                        }
                     }
                 }
                 if(WikiDataRepository.cachedClasses(this).isEmpty())
