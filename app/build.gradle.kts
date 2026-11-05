@@ -20,8 +20,8 @@ android {
         applicationId = "com.aqw.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "1.1"
+        versionCode = 12
+        versionName = "1.2"
     }
 
     buildTypes {
@@ -42,4 +42,5 @@ android {
 
 dependencies {
     implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("org.jsoup:jsoup:1.18.3")
 }
