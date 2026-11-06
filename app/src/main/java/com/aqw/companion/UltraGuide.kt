@@ -4,6 +4,77 @@ package com.aqw.companion
 object UltraGuide {
     data class Boss(val name:String,val join:String,val team:List<String>,val roles:List<String>,val mechanics:List<String>,val tip:String)
 
+
+    data class ClassTaunt(val whenToTaunt:String,val signal:String,val action:String,val warning:String,val confirmed:Boolean)
+    fun classTaunt(boss:String,clazz:String):ClassTaunt {
+        val c=clazz.lowercase()
+        val loo=c.contains("lord of order")
+        val lr=c.contains("legion revenant")
+        val ap=c.contains("archpaladin")
+        val cav=c.contains("chaos avenger")
+        val isTaunter=loo||lr||ap||cav||c.contains("void highlord")
+        if(boss=="Champion Drakath") {
+            return if(loo) ClassTaunt(
+                "Prepare o Scroll of Enrage ANTES de 18M, 16M, 14M, 12M, 8M, 6M e 4M de HP.",
+                "Olhe o HP do Drakath. O gatilho é a vida, não o relógio.",
+                "Se você for o taunter designado, use Scroll of Enrage imediatamente antes do marco.",
+                "Confirme com a equipe quem segura o taunt; o tempo varia com o DPS.",true)
+            else ClassTaunt("Normalmente você não é o taunter padrão nesta composição.",
+                "Observe quem ficou responsável pelos marcos de HP.",
+                "Mantenha sua função de dano, buffs ou cura. Só taunte se a equipe atribuir essa função a você.",
+                "Não use Scroll of Enrage por conta própria.",false)
+        }
+        if(boss=="Ultra Dage") {
+            return if(cav) ClassTaunt("Mantenha o taunt do Chaos Avenger ativo durante a luta.",
+                "Observe o ciclo de ataques e as mecânicas Zone/Decay.",
+                "Use a habilidade 3 no ciclo combinado e renove antes de o efeito acabar.",
+                "O instante exato depende da rotação e da velocidade da equipe.",true)
+            else ClassTaunt("Taunt não atribuído automaticamente à sua classe nesta composição.",
+                "Siga o jogador que está segurando a ameaça.",
+                "Execute sua função normal; só use Scroll of Enrage se sua equipe pedir.",
+                "Não confunda Decay com taunt.",false)
+        }
+        if(boss=="Ultra Nulgath") {
+            return if(ap||lr) ClassTaunt("Alterne com o OUTRO taunter; nunca os dois ao mesmo tempo.",
+                "Use o aviso 'Behold the power of the Abyss!' e a duração de Frailty como referência.",
+                "Definam antes quem é o primeiro e o segundo. O segundo responde ao primeiro na rotação.",
+                "Sem saber sua posição (primeiro/segundo), não existe segundo exato seguro.",true)
+            else ClassTaunt("Você não está marcado como taunter principal nesta composição.",
+                "Observe a alternância dos dois taunters.",
+                "Concentre-se na função da sua classe, salvo outra estratégia combinada.",
+                "Não interrompa a rotação de taunts.",false)
+        }
+        if(boss=="Ultra Speaker") {
+            return if(loo||lr||ap) ClassTaunt("Taunte somente na sua vez da rotação Truth/Listen.",
+                "Avisos 'I will make you see the truth' e 'You shall listen'.",
+                "Combine sua posição na rotação de 3 ou 4 taunters ANTES de começar.",
+                "Sem a estratégia e a posição definidas, não é seguro indicar segundos fixos.",false)
+            else ClassTaunt("Depende da estratégia de 3 ou 4 taunters.",
+                "Observe Truth, Listen e as zonas.",
+                "Confirme se sua classe participa da rotação antes de usar Scroll of Enrage.",
+                "Uma indicação genérica pode causar wipe.",false)
+        }
+        if(boss=="Ultra Darkon") {
+            return if(isTaunter) ClassTaunt("Se for um dos dois taunters, alterne a cada Elegy atribuída.",
+                "Observe a animação de boca (Elegy) e a fase atual.",
+                "Taunte apenas na sua vez, para evitar acumular Elegies na mesma pessoa.",
+                "A composição cadastrada pode usar outra estratégia; confirme sua função.",false)
+            else ClassTaunt("Não há taunt atribuído a esta classe por padrão.",
+                "Observe a mecânica Elegy.",
+                "Mantenha sua função de suporte/dano; não entre na rotação sem combinar.",
+                "A estratégia depende da composição.",false)
+        }
+        if(boss=="Ultra Drago" && (lr||ap)) {
+            return ClassTaunt("Mantenha o taunt no alvo designado pela equipe.",
+                "Verifique se você ficou responsável pelo Bow ou pelo Axe.",
+                "Renove o taunt antes de expirar, sempre no seu alvo.",
+                "O intervalo exato depende da estratégia; confirme o alvo.",false)
+        }
+        return ClassTaunt("Não há momento exato de taunt validado para $clazz neste Ultra.",
+            "Consulte a mecânica do chefe e a rotação combinada.",
+            "Não use Scroll of Enrage automaticamente. Confirme se sua classe é responsável pelo taunt.",
+            "Dados insuficientes para recomendar segundos ou habilidade específica.",false)
+    }
     data class TauntGuide(val timing:String,val trigger:String,val roles:String,val caution:String,val verified:Boolean)
     /** Encounter cues are safer than a wall-clock timer because DPS changes phase timing. */
     fun tauntGuide(bossName:String):TauntGuide = when(bossName) {
