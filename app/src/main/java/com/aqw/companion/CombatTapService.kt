@@ -19,7 +19,7 @@ class CombatTapService : AccessibilityService() {
     private var running = false
     private var index = 0
     private var sequence = listOf(2, 3, 4, 5)
-    private var intervalMs = 1200L
+    private var intervalMs = 250L
     private val loop = object : Runnable {
         override fun run() {
             if (!running) return
@@ -76,7 +76,7 @@ class CombatTapService : AccessibilityService() {
                 it.trim().toIntOrNull()?.takeIf { n -> n in 1..5 }
             }
         if (sequence.isEmpty()) return
-        intervalMs = prefs.getLong("interval", 1200L).coerceIn(350L, 10000L)
+        intervalMs = prefs.getLong("interval", 250L).coerceIn(120L, 10000L)
         index = 0
         running = true
         handler.post(loop)
