@@ -132,7 +132,7 @@ class BubbleService: Service() {
         header.addView(button("×"){stopSelf()}.apply {contentDescription="Encerrar bolinha"})
         box.addView(header)
         val tabs=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
-        listOf("Ultras","Classes","Forge","Poções").forEach { name->
+        listOf("Ultras","Classes","Farm","Boss","Forge","Poções").forEach { name->
             val tabButton=button(name){tab=name;showClassPicker=false;resize();render()}.apply {
                 gravity=Gravity.CENTER
                 textSize=11f
@@ -346,6 +346,103 @@ class BubbleService: Service() {
                 }
                 if(WikiDataRepository.cachedClasses(this).isEmpty())
                     line("Sincronize a AQW Wiki na aba Dados do aplicativo para ampliar o catálogo.")
+            }
+            "Farm", "Boss" -> {
+                heading(if(tab=="Boss") "FARM BOSS" else "AUTO FARM")
+                line("Tudo aqui na bolinha, sem sair do AQW.")
+                line("Experimental: não reconhece morte, cooldowns ou inimigos. Não usar em Ultras.")
+                val combatPrefs = getSharedPreferences(CombatTapService.PREFS, MODE_PRIVATE)
+                val isBoss = tab == "Boss"
+                val profiles = if (isBoss) linkedMapOf(
+                    "Void Highlord" to "4,3,2,5",
+                    "Chaos Avenger" to "2,3,4,5",
+                    "Yami no Ronin" to "2,3,4,5"
+                ) else linkedMapOf(
+                    "Legion Revenant" to "4,3,2,5",
+                    "ArchMage" to "3,4,5,2",
+                    "Arcana Invoker" to "2,3,4,5"
+                )
+                val classKey = if (isBoss) "boss_class" else "farm_class"
+                val sequenceKey = if (isBoss) "boss_sequence" else "farm_sequence"
+                val defaultClass = if (isBoss) "Void Highlord" else "Legion Revenant"
+                val selectedCombatClass = combatPrefs.getString(classKey, defaultClass) ?: defaultClass
+                val selectedSequence = combatPrefs.getString(sequenceKey, profiles[selectedCombatClass] ?: "2,3,4,5")
+                    ?: "2,3,4,5"
+                item("Classe: $selectedCombatClass   ▾") {
+                    chooser(if (isBoss) "Classe do Boss" else "Classe do Farm", profiles.keys.toList()) { selectedClass ->
+                        CombatTapService.instance?.stopLoop()
+                        combatPrefs.edit().putString(classKey, selectedClass)
+                            .putString(sequenceKey, profiles[selectedClass]).apply()
+                    }
+                }
+                line("Combo: $selectedSequence")
+                item("Editar sequência de skills") {
+                    val input = EditText(this@BubbleService).apply {
+                        setSingleLine(true)
+                        setText(selectedSequence)
+                        inputType = android.text.InputType.TYPE_CLASS_TEXT
+                    }
+                    val dialog = AlertDialog.Builder(this@BubbleService)
+                        .setTitle(if (isBoss) "Combo Farm Boss" else "Combo Farm Normal")
+                        .setView(input)
+                        .setNegativeButton("Cancelar", null)
+                        .setPositiveButton("Salvar") { _, _ ->
+                            val steps = input.text.toString().split(',', ' ', '-', '>')
+                                .mapNotNull { it.trim().toIntOrNull() }
+                            if (steps.isNotEmpty() && steps.all { it in 1..5 }) {
+                                CombatTapService.instance?.stopLoop()
+                                combatPrefs.edit().putString(sequenceKey, steps.joinToString(",")).apply()
+                                render()
+                            } else {
+                                Toast.makeText(this@BubbleService, "Use skills de 1 a 5", Toast.LENGTH_SHORT).show()
+                            }
+                        }.create()
+                    dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+                    dialog.show()
+                }
+                val service = CombatTapService.instance
+                if (service == null) {
+                    line("Ative a acessibilidade do AQW Companion para controlar os toques.")
+                } else {
+                    line(if (service.isLoopRunning()) "Status: ATIVO" else "Status: PARADO")
+                    item(if (isBoss) "▶ INICIAR BOSS" else "▶ INICIAR FARM") {
+                        service.startLoop(if (isBoss) "boss" else "farm")
+                        expanded = false
+                        resize()
+                        render()
+                    }
+                    item(if (isBoss) "■ PARAR BOSS" else "■ PARAR FARM") { service.stopLoop(); render() }
+                }
+                val x1 = combatPrefs.getInt("x1", 40)
+                val y = combatPrefs.getInt("y", 94)
+                heading("Ajuste dos botões inferiores")
+                line("Skill 1: $x1% horizontal | Barra: $y% vertical")
+                item("◀ Skills para esquerda") {
+                    val editor = combatPrefs.edit()
+                    (1..5).forEach { n ->
+                        editor.putInt("x$n", (combatPrefs.getInt("x$n", 36+n*4)-1).coerceIn(1,99))
+                    }
+                    editor.apply();render()
+                }
+                item("Skills para direita ▶") {
+                    val editor = combatPrefs.edit()
+                    (1..5).forEach { n ->
+                        editor.putInt("x$n", (combatPrefs.getInt("x$n", 36+n*4)+1).coerceIn(1,99))
+                    }
+                    editor.apply();render()
+                }
+                item("Barra mais acima ▲") {
+                    combatPrefs.edit().putInt("y", (y-1).coerceIn(1,99)).apply();render()
+                }
+                item("Barra mais abaixo ▼") {
+                    combatPrefs.edit().putInt("y", (y+1).coerceIn(1,99)).apply();render()
+                }
+                item("Restaurar posições conforme print") {
+                    val editor = combatPrefs.edit().putInt("y",94)
+                    (1..5).forEach { n -> editor.putInt("x$n",36+n*4) }
+                    editor.apply();render()
+                }
+                line("Os ajustes usam a barra de skills inferior como referência. Se estiver clicando no lugar errado, pare o farm antes de ajustar.")
             }
             "Forge"->{
                 item("Forge: $selectedForge   ▾"){

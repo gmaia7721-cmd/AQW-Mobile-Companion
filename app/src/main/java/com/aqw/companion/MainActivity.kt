@@ -163,7 +163,7 @@ class MainActivity : Activity() {
         currentSection = section
         content.removeAllViews()
         nav.removeAllViews()
-        listOf("Classes", "Ultras", "Forge", "Poções", "Tier List", "Biblioteca").forEach { tab ->
+        listOf("Classes", "Combate", "Ultras", "Forge", "Poções", "Tier List", "Biblioteca").forEach { tab ->
             nav.addView(TextView(this).apply {
                 text = when(tab) { "Biblioteca" -> "Dados"; else -> tab }
                 gravity = android.view.Gravity.CENTER
@@ -180,6 +180,11 @@ class MainActivity : Activity() {
             addButton("Parar bolinha") { stopService(Intent(this, BubbleService::class.java)) }
         }
         when (section) {
+            "Combate" -> {
+                addText("AUTO FARM / AUTO BOSS", 19f)
+                addText("Configuração experimental. Sem detecção de HP, morte ou cooldown.", 13f)
+                addButton("Configurar Auto Farm e Auto Boss") { startActivity(Intent(this, CombatActivity::class.java)) }
+            }
             "Classes" -> {
                 addText("CLASSES", 19f)
                 val card = LinearLayout(this).apply {
