@@ -133,6 +133,38 @@ object UltraGuide {
         Forge("Lament","Cape","Alternativa ofensiva para builds compatíveis."),
         Forge("Absolution","Cape","Alternativa voltada à cura.")
     )
+
+    data class CraftGuide(val materials:List<String>,val steps:List<String>,val verified:Boolean,val source:String)
+    fun craftGuide(name:String):CraftGuide = when(name) {
+        "Fate Tonic" -> CraftGuide(
+            listOf("Opção de troca: Basic Sage Tonic x3 OU Sage Tonic x2", "Gold x1.500", "Alternativa de loja: Gold Voucher 500k x4 (Rank 8 Alchemy)"),
+            listOf("Copie /join alchemyacademy e entre no mapa.",
+                "Para a troca, procure Alina e abra Exchanging Mixtures (Gebo).",
+                "Selecione Fate Tonic, confira os materiais da opção escolhida e confirme a troca.",
+                "Alternativa: abra Gebo Shop, selecione Fate Tonic e confirme a compra se tiver Rank 8 Alchemy.",
+                "Se preferir Alchemy, as combinações da wiki são tentativas e NÃO garantem o resultado: Arashtite Ore + outro reagente, Dried Slime + outro, ou Trollola Nectar + outro."),
+            true,"https://aqwwiki.wikidot.com/fate-tonic")
+        "Sage Tonic" -> CraftGuide(
+            listOf("Opção de troca: Soul Potion x2 + Gold x1.500", "Alternativa de loja: Gold Voucher 500k x2 (Rank 8 Alchemy)"),
+            listOf("Copie /join alchemyacademy e entre no mapa.",
+                "Procure Alina e abra Exchanging Mixtures (Gebo) para a troca por Soul Potions.",
+                "Selecione Sage Tonic, confira Soul Potion x2 e 1.500 Gold e confirme.",
+                "Alternativa: abra Gebo Shop, selecione Sage Tonic e use 2 Gold Vouchers 500k (Rank 8 Alchemy).",
+                "Misturas experimentais da wiki: Arashtite Ore + Doomatter, Dragon Scale (1) ou Necrot. Resultado não garantido."),
+            true,"https://aqwwiki.wikidot.com/sage-tonic")
+        "Scroll of Enrage" -> CraftGuide(
+            listOf("Zealous Ink x1 (Spell Ink: Mystic Parchment x2, ou AC Spell Inks: Arcane Quill x1)", "Rank 5 SpellCrafting"),
+            listOf("Copie /join spellcraft e entre no mapa.",
+                "Fale com Neveya e abra Spell Ink ou AC Spell Inks.",
+                "Obtenha Zealous Ink: troque 2 Mystic Parchments ou 1 Arcane Quill, conforme a loja.",
+                "Abra a fabricação SpellCrafting com Zealous Ink.",
+                "Selecione a combinação do Scroll of Enrage no minijogo e conclua. A combinação visual exata não está validada aqui.",
+                "Confira 40 Scrolls of Enrage no inventário após fabricar."),
+            true,"https://aqwwiki.wikidot.com/scroll-of-enrage")
+        else -> CraftGuide(emptyList(),listOf("Receita e sequência de cliques ainda não verificadas para este consumível.",
+            "Consulte a AQW Wiki antes de gastar materiais. Não serão exibidos ingredientes presumidos."),false,
+            "https://aqwwiki.wikidot.com/")
+    }
     data class Consumable(val name:String,val join:String,val note:String)
     val consumables=listOf(
         Consumable("Fate Tonic","alchemyacademy","Tônico ofensivo; confira requisitos da Alchemy."),
