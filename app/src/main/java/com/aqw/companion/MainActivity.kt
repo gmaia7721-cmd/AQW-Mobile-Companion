@@ -6,6 +6,8 @@ import android.app.DownloadManager
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
 import android.os.Build
+import android.provider.Settings
+import android.database.Cursor
 import android.view.WindowInsets
 import android.os.Environment
 import android.content.Context
@@ -56,6 +58,7 @@ class MainActivity : Activity() {
     }
 
     private var updateDownloadId = -1L
+    private var installerPromptedForId = -1L
     private var updateReceiver: BroadcastReceiver? = null
     private lateinit var content: LinearLayout
     private lateinit var nav: LinearLayout
@@ -99,20 +102,14 @@ class MainActivity : Activity() {
             override fun onReceive(context: Context, intent: Intent) {
                 val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
                 if (id != updateDownloadId) return
-                val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                val uri = manager.getUriForDownloadedFile(id) ?: return
-                AlertDialog.Builder(this@MainActivity)
-                    .setTitle("Atualização pronta")
-                    .setMessage("Download concluído. Abrir o instalador do Android?")
-                    .setNegativeButton("Depois", null)
-                    .setPositiveButton("Instalar") { _, _ -> openApkInstaller(uri) }
-                    .show()
+                checkDownloadedUpdate()
             }
         }
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver,
-            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_NOT_EXPORTED)
+            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
         else registerReceiver(receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
         updateReceiver = receiver
+        updateDownloadId = prefs.getLong("pending_update_download_id", -1L)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(12), dp(12), dp(8))
@@ -590,15 +587,62 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (updateDownloadId > 0) checkDownloadedUpdate()
+    }
+
+    private fun checkDownloadedUpdate() {
+        val id = updateDownloadId
+        if (id <= 0 || installerPromptedForId == id || isFinishing) return
+        val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val cursor: Cursor = try { manager.query(DownloadManager.Query().setFilterById(id)) }
+            catch (_: Exception) { return }
+        cursor.use {
+            if (!it.moveToFirst()) return
+            val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+            if (status == DownloadManager.STATUS_FAILED) {
+                installerPromptedForId = id
+                getSharedPreferences("companion_settings",MODE_PRIVATE).edit()
+                    .remove("pending_update_download_id").apply()
+                AlertDialog.Builder(this).setTitle("Falha ao baixar atualização")
+                    .setMessage("O download não foi concluído. Tente novamente pela aba Dados.")
+                    .setPositiveButton("OK",null).show()
+                return
+            }
+            if (status != DownloadManager.STATUS_SUCCESSFUL) return
+        }
+        val uri = manager.getUriForDownloadedFile(id) ?: return
+        installerPromptedForId = id
+        AlertDialog.Builder(this).setTitle("Atualização pronta")
+            .setMessage("APK baixado. Toque em Instalar para abrir o instalador do Android.")
+            .setNegativeButton("Depois",null)
+            .setPositiveButton("Instalar"){_,_->openApkInstaller(uri)}
+            .show()
+    }
+
     private fun openApkInstaller(uri: Uri) {
+        if (Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
+            AlertDialog.Builder(this).setTitle("Permitir instalação")
+                .setMessage("Autorize o AQW Companion a instalar apps desconhecidos nas configurações do Android. Depois volte ao aplicativo e toque em Instalar.")
+                .setNegativeButton("Depois",null)
+                .setPositiveButton("Abrir configurações"){_,_->
+                    startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:$packageName")))
+                }.show()
+            installerPromptedForId = -1L
+            return
+        }
         try {
             startActivity(Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, "application/vnd.android.package-archive")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
             })
         } catch (error: Exception) {
-            AlertDialog.Builder(this).setMessage("Não foi possível abrir o instalador. Abra o APK em Downloads.")
-                .setPositiveButton("OK", null).show()
+            installerPromptedForId = -1L
+            AlertDialog.Builder(this).setTitle("Não foi possível abrir o instalador")
+                .setMessage("Tente novamente pela aba Dados ou abra o APK em Downloads. ${error.localizedMessage.orEmpty()}")
+                .setPositiveButton("OK",null).show()
         }
     }
 
@@ -615,6 +659,9 @@ class MainActivity : Activity() {
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,"AQW-Companion-v$version.apk")
             updateDownloadId = (getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).enqueue(request)
+            installerPromptedForId = -1L
+            getSharedPreferences("companion_settings",MODE_PRIVATE).edit()
+                .putLong("pending_update_download_id",updateDownloadId).apply()
             AlertDialog.Builder(this).setTitle("Download iniciado")
                 .setMessage("Mantenha o Companion aberto. Quando o download terminar, toque em Instalar. O APK também ficará em Downloads.")
                 .setPositiveButton("OK",null).show()
