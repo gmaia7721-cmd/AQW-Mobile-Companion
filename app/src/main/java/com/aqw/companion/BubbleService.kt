@@ -132,7 +132,7 @@ class BubbleService: Service() {
         header.addView(button("×"){stopSelf()}.apply {contentDescription="Encerrar bolinha"})
         box.addView(header)
         val tabs=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
-        listOf("Ultras","Classes","Farm","Forge","Poções").forEach { name->
+        listOf("Ultras","Classes","Farm","Boss","Forge","Poções").forEach { name->
             val tabButton=button(name){tab=name;showClassPicker=false;resize();render()}.apply {
                 gravity=Gravity.CENTER
                 textSize=11f
@@ -347,8 +347,8 @@ class BubbleService: Service() {
                 if(WikiDataRepository.cachedClasses(this).isEmpty())
                     line("Sincronize a AQW Wiki na aba Dados do aplicativo para ampliar o catálogo.")
             }
-            "Farm" -> {
-                heading("AUTO FARM / AUTO BOSS")
+            "Farm", "Boss" -> {
+                heading(if(tab=="Boss") "FARM BOSS" else "AUTO FARM")
                 line("Tudo aqui na bolinha, sem sair do AQW.")
                 line("Experimental: não reconhece morte, cooldowns ou inimigos. Não usar em Ultras.")
                 val combatPrefs = getSharedPreferences(CombatTapService.PREFS, MODE_PRIVATE)
@@ -360,11 +360,11 @@ class BubbleService: Service() {
                     "Chaos Avenger" to "2,3,4,5",
                     "Yami no Ronin" to "2,3,4,5"
                 )
-                val farmClass = combatPrefs.getString("farm_class", "Legion Revenant") ?: "Legion Revenant"
+                val farmClass = combatPrefs.getString(if(tab=="Boss") "boss_class" else "farm_class", if(tab=="Boss") "Void Highlord" else "Legion Revenant") ?: "Legion Revenant"
                 item("Classe: $farmClass   ▾") {
-                    chooser("Classe do Farm", profiles.keys.toList()) { selectedClass ->
+                    chooser(if(tab=="Boss") "Classe do Boss" else "Classe do Farm", profiles.keys.toList()) { selectedClass ->
                         CombatTapService.instance?.stopLoop()
-                        combatPrefs.edit().putString("farm_class", selectedClass)
+                        combatPrefs.edit().putString(if(tab=="Boss") "boss_class" else "farm_class", selectedClass)
                             .putString("sequence", profiles[selectedClass]).apply()
                     }
                 }
@@ -374,13 +374,13 @@ class BubbleService: Service() {
                     line("Ative a acessibilidade do AQW Companion para controlar os toques.")
                 } else {
                     line(if (service.isLoopRunning()) "Status: ATIVO" else "Status: PARADO")
-                    item("▶ INICIAR FARM") {
+                    item(if(tab=="Boss") "▶ INICIAR BOSS" else "▶ INICIAR FARM") {
                         service.startLoop()
                         expanded = false
                         resize()
                         render()
                     }
-                    item("■ PARAR FARM") { service.stopLoop(); render() }
+                    item(if(tab=="Boss") "■ PARAR BOSS" else "■ PARAR FARM") { service.stopLoop(); render() }
                 }
                 val x1 = combatPrefs.getInt("x1", 40)
                 val y = combatPrefs.getInt("y", 94)
