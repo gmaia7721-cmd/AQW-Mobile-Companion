@@ -68,10 +68,11 @@ class CombatTapService : AccessibilityService() {
         running = false
         handler.removeCallbacksAndMessages(null)
     }
-    fun startLoop() {
+    fun startLoop(mode: String = "farm") {
         stopLoop()
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-        sequence = prefs.getString("sequence", "2,3,4,5").orEmpty()
+        val key = if (mode == "boss") "boss_sequence" else "farm_sequence"
+        sequence = prefs.getString(key, if (mode == "boss") "4,3,2,5" else prefs.getString("sequence", "4,3,2,5")).orEmpty()
             .split(',', ' ', '-', '>').mapNotNull {
                 it.trim().toIntOrNull()?.takeIf { n -> n in 1..5 }
             }
