@@ -183,7 +183,8 @@ class MainActivity : Activity() {
             "Combate" -> {
                 addText("AUTO FARM / AUTO BOSS", 19f)
                 addText("Configuração experimental. Sem detecção de HP, morte ou cooldown.", 13f)
-                addButton("Abrir Script Lab (simulador)") { startActivity(Intent(this, ScriptLabActivity::class.java)) }\n                addButton("Configurar Auto Farm e Auto Boss") { startActivity(Intent(this, CombatActivity::class.java)) }
+                addButton("Abrir Script Lab (simulador)") { startActivity(Intent(this, ScriptLabActivity::class.java)) }
+                addButton("Configurar Auto Farm e Auto Boss") { startActivity(Intent(this, CombatActivity::class.java)) }
             }
             "Classes" -> {
                 addText("CLASSES", 19f)
