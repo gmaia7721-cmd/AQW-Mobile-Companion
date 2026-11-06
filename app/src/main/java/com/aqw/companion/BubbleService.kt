@@ -132,7 +132,7 @@ class BubbleService: Service() {
         header.addView(button("×"){stopSelf()}.apply {contentDescription="Encerrar bolinha"})
         box.addView(header)
         val tabs=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
-        listOf("Ultras","Classes","Forge","Poções").forEach { name->
+        listOf("Ultras","Classes","Farm","Forge","Poções").forEach { name->
             val tabButton=button(name){tab=name;showClassPicker=false;resize();render()}.apply {
                 gravity=Gravity.CENTER
                 textSize=11f
@@ -346,6 +346,25 @@ class BubbleService: Service() {
                 }
                 if(WikiDataRepository.cachedClasses(this).isEmpty())
                     line("Sincronize a AQW Wiki na aba Dados do aplicativo para ampliar o catálogo.")
+            }
+            "Farm" -> {
+                heading("AUTO FARM / AUTO BOSS")
+                line("Controle dentro do jogo. Configure as posições e habilidades no aplicativo antes de iniciar.")
+                line("Experimental: não reconhece morte, cooldowns ou inimigos. Não usar em Ultras.")
+                val service = CombatTapService.instance
+                if (service == null) {
+                    line("Ative o serviço de acessibilidade AQW Companion nas configurações do Android antes de usar.")
+                    item("Abrir acessibilidade") {
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                } else {
+                    line(if (service.isLoopRunning()) "Status: ATIVO" else "Status: PARADO")
+                    item("▶ INICIAR FARM") { service.startLoop(); render() }
+                    item("■ PARAR FARM") { service.stopLoop(); render() }
+                }
+                item("Configurar habilidades e posições") {
+                    startActivity(Intent(this, CombatActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
             }
             "Forge"->{
                 item("Forge: $selectedForge   ▾"){
