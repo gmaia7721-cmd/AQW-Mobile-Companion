@@ -20,8 +20,8 @@ android {
         applicationId = "com.aqw.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 35
-        versionName = "3.5-beta1"
+        versionCode = 36
+        versionName = "3.5-beta2"
     }
 
     buildTypes {
