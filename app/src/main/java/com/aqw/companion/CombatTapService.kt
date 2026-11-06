@@ -38,7 +38,7 @@ class CombatTapService : AccessibilityService() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
                     if (!running) return
                     index++
-                    handler.postDelayed(loop, intervalMs)
+                    scheduleNextTap()
                 }
                 override fun onCancelled(gestureDescription: GestureDescription?) {
                     stopLoop()
@@ -46,6 +46,10 @@ class CombatTapService : AccessibilityService() {
             }, handler)
             if (!accepted) stopLoop()
         }
+    }
+
+    private fun scheduleNextTap() {
+        if (running) handler.postDelayed(loop, intervalMs)
     }
 
     override fun onServiceConnected() {
