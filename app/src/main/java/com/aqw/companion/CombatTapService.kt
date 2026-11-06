@@ -76,7 +76,7 @@ class CombatTapService : AccessibilityService() {
                 it.trim().toIntOrNull()?.takeIf { n -> n in 1..5 }
             }
         if (sequence.isEmpty()) return
-        intervalMs = prefs.getLong("interval", 250L).coerceIn(120L, 10000L)
+        intervalMs = prefs.getLong("interval", 250L).let { if (it == 1200L) 250L else it }.coerceIn(120L, 10000L)
         index = 0
         running = true
         handler.post(loop)
