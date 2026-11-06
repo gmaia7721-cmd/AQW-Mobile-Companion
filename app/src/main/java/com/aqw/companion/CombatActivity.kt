@@ -23,7 +23,7 @@ class CombatActivity : Activity() {
    return EditText(this).also{it.setSingleLine(true);it.setText(default);root.addView(it)}
   }
   val seq=field("Sequência de skills (1 a 5)",p.getString("sequence","2,3,4,5") ?: "2,3,4,5")
-  val delay=field("Intervalo entre cliques em milissegundos (mín. 350)",p.getLong("interval",1200).toString())
+  val delay=field("Intervalo entre cliques em milissegundos (mín. 120)",p.getLong("interval",250).toString())
   val y=field("Altura das skills (% da tela)",p.getInt("y",85).toString())
   val xs=(1..5).map{n->field("Posição horizontal da skill "+n+" (% da tela)",p.getInt("x"+n,12+n*14).toString())}
   spinner.onItemSelectedListener=object:android.widget.AdapterView.OnItemSelectedListener {
@@ -36,7 +36,7 @@ class CombatActivity : Activity() {
     val steps=seq.text.toString().split(',',' ','-','>').mapNotNull{it.trim().toIntOrNull()}
     if(steps.isEmpty()||steps.any{it !in 1..5}){Toast.makeText(this@CombatActivity,"Use apenas skills 1 a 5",Toast.LENGTH_LONG).show();return@setOnClickListener}
     val editor=p.edit().putString("sequence",steps.joinToString(","))
-     .putLong("interval",(delay.text.toString().toLongOrNull()?:1200L).coerceIn(350L,10000L))
+     .putLong("interval",(delay.text.toString().toLongOrNull()?:250L).coerceIn(120L,10000L))
      .putInt("y",(y.text.toString().toIntOrNull()?:85).coerceIn(1,99))
     xs.forEachIndexed{index,edit->editor.putInt("x"+(index+1),(edit.text.toString().toIntOrNull()?:50).coerceIn(1,99))}
     editor.apply()
