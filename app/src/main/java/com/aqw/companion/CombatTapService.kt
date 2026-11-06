@@ -9,7 +9,7 @@ import android.os.Looper
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 
-/** User-initiated taps only. Does not detect bosses, cooldowns, HP or deaths. */
+/** Repeats user-selected skill button taps; never moves the character or targets enemies. */
 class CombatTapService : AccessibilityService() {
     companion object {
         @Volatile var instance: CombatTapService? = null
@@ -20,11 +20,37 @@ class CombatTapService : AccessibilityService() {
     private var index = 0
     private var sequence = listOf(2, 3, 4, 5)
     private var intervalMs = 1200L
+    private val loop = object : Runnable {
+        override fun run() {
+            if (!running) return
+            val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+            val n = sequence[index % sequence.size]
+            val size = Point()
+            (getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealSize(size)
+            val xPercent = prefs.getInt("x$n", 36 + n * 4).coerceIn(1, 99)
+            val yPercent = prefs.getInt("y", 94).coerceIn(1, 99)
+            val path = Path().apply {
+                moveTo(size.x * xPercent / 100f, size.y * yPercent / 100f)
+            }
+            val gesture = GestureDescription.Builder()
+                .addStroke(GestureDescription.StrokeDescription(path, 0, 55)).build()
+            val accepted = dispatchGesture(gesture, object : GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    if (!running) return
+                    index++
+                    handler.postDelayed(loop, intervalMs)
+                }
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    stopLoop()
+                }
+            }, handler)
+            if (!accepted) stopLoop()
+        }
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
-        // Controls are hosted by the existing BubbleService overlay.
     }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
     override fun onInterrupt() { stopLoop() }
@@ -34,36 +60,21 @@ class CombatTapService : AccessibilityService() {
         super.onDestroy()
     }
     fun isLoopRunning(): Boolean = running
-    fun stopLoop() { running = false; handler.removeCallbacksAndMessages(null);  }
+    fun stopLoop() {
+        running = false
+        handler.removeCallbacksAndMessages(null)
+    }
     fun startLoop() {
         stopLoop()
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         sequence = prefs.getString("sequence", "2,3,4,5").orEmpty()
-            .split(',', ' ', '-', '>').mapNotNull { it.trim().toIntOrNull()?.takeIf { n -> n in 1..5 } }
+            .split(',', ' ', '-', '>').mapNotNull {
+                it.trim().toIntOrNull()?.takeIf { n -> n in 1..5 }
+            }
         if (sequence.isEmpty()) return
         intervalMs = prefs.getLong("interval", 1200L).coerceIn(350L, 10000L)
         index = 0
         running = true
-        updateLabel()
         handler.post(loop)
-    }
-    private val loop = object : Runnable {
-        override fun run() {
-            if (!running) return
-            val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-            val n = sequence[index % sequence.size]
-            index++
-            val size = Point()
-            (getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealSize(size)
-            val xPercent = prefs.getInt("x$n", 36 + n * 4).coerceIn(1, 99)
-            val yPercent = prefs.getInt("y", 94).coerceIn(1, 99)
-            val x = size.x * xPercent / 100f
-            val y = size.y * yPercent / 100f
-            val path = Path().apply { moveTo(x, y) }
-            val gesture = GestureDescription.Builder()
-                .addStroke(GestureDescription.StrokeDescription(path, 0, 55)).build()
-            dispatchGesture(gesture, null, null)
-            handler.postDelayed(this, intervalMs)
-        }
     }
 }
