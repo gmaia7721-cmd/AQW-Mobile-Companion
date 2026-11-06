@@ -31,7 +31,7 @@ class CombatTapService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        showOverlay()
+        // Controls are hosted by the existing BubbleService overlay.
     }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
     override fun onInterrupt() { stopLoop() }
@@ -42,6 +42,7 @@ class CombatTapService : AccessibilityService() {
         instance = null
         super.onDestroy()
     }
+    fun isLoopRunning(): Boolean = running
     fun stopLoop() { running = false; handler.removeCallbacksAndMessages(null); updateLabel() }
     fun startLoop() {
         stopLoop()
