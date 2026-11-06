@@ -352,35 +352,66 @@ class BubbleService: Service() {
                 line("Tudo aqui na bolinha, sem sair do AQW.")
                 line("Experimental: não reconhece morte, cooldowns ou inimigos. Não usar em Ultras.")
                 val combatPrefs = getSharedPreferences(CombatTapService.PREFS, MODE_PRIVATE)
-                val profiles = linkedMapOf(
-                    "Legion Revenant" to "4,3,2,5",
-                    "ArchMage" to "3,4,5,2",
-                    "Arcana Invoker" to "2,3,4,5",
+                val isBoss = tab == "Boss"
+                val profiles = if (isBoss) linkedMapOf(
                     "Void Highlord" to "4,3,2,5",
                     "Chaos Avenger" to "2,3,4,5",
                     "Yami no Ronin" to "2,3,4,5"
+                ) else linkedMapOf(
+                    "Legion Revenant" to "4,3,2,5",
+                    "ArchMage" to "3,4,5,2",
+                    "Arcana Invoker" to "2,3,4,5"
                 )
-                val farmClass = combatPrefs.getString(if(tab=="Boss") "boss_class" else "farm_class", if(tab=="Boss") "Void Highlord" else "Legion Revenant") ?: "Legion Revenant"
-                item("Classe: $farmClass   ▾") {
-                    chooser(if(tab=="Boss") "Classe do Boss" else "Classe do Farm", profiles.keys.toList()) { selectedClass ->
+                val classKey = if (isBoss) "boss_class" else "farm_class"
+                val sequenceKey = if (isBoss) "boss_sequence" else "farm_sequence"
+                val defaultClass = if (isBoss) "Void Highlord" else "Legion Revenant"
+                val selectedCombatClass = combatPrefs.getString(classKey, defaultClass) ?: defaultClass
+                val selectedSequence = combatPrefs.getString(sequenceKey, profiles[selectedCombatClass] ?: "2,3,4,5")
+                    ?: "2,3,4,5"
+                item("Classe: $selectedCombatClass   ▾") {
+                    chooser(if (isBoss) "Classe do Boss" else "Classe do Farm", profiles.keys.toList()) { selectedClass ->
                         CombatTapService.instance?.stopLoop()
-                        combatPrefs.edit().putString(if(tab=="Boss") "boss_class" else "farm_class", selectedClass)
-                            .putString("sequence", profiles[selectedClass]).apply()
+                        combatPrefs.edit().putString(classKey, selectedClass)
+                            .putString(sequenceKey, profiles[selectedClass]).apply()
                     }
                 }
-                line("Combo: " + (combatPrefs.getString("sequence", profiles[farmClass]) ?: "2,3,4,5"))
+                line("Combo: $selectedSequence")
+                item("Editar sequência de skills") {
+                    val input = EditText(this@BubbleService).apply {
+                        setSingleLine(true)
+                        setText(selectedSequence)
+                        inputType = android.text.InputType.TYPE_CLASS_TEXT
+                    }
+                    val dialog = AlertDialog.Builder(this@BubbleService)
+                        .setTitle(if (isBoss) "Combo Farm Boss" else "Combo Farm Normal")
+                        .setView(input)
+                        .setNegativeButton("Cancelar", null)
+                        .setPositiveButton("Salvar") { _, _ ->
+                            val steps = input.text.toString().split(',', ' ', '-', '>')
+                                .mapNotNull { it.trim().toIntOrNull() }
+                            if (steps.isNotEmpty() && steps.all { it in 1..5 }) {
+                                CombatTapService.instance?.stopLoop()
+                                combatPrefs.edit().putString(sequenceKey, steps.joinToString(",")).apply()
+                                render()
+                            } else {
+                                Toast.makeText(this@BubbleService, "Use skills de 1 a 5", Toast.LENGTH_SHORT).show()
+                            }
+                        }.create()
+                    dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+                    dialog.show()
+                }
                 val service = CombatTapService.instance
                 if (service == null) {
                     line("Ative a acessibilidade do AQW Companion para controlar os toques.")
                 } else {
                     line(if (service.isLoopRunning()) "Status: ATIVO" else "Status: PARADO")
-                    item(if(tab=="Boss") "▶ INICIAR BOSS" else "▶ INICIAR FARM") {
-                        service.startLoop()
+                    item(if (isBoss) "▶ INICIAR BOSS" else "▶ INICIAR FARM") {
+                        service.startLoop(if (isBoss) "boss" else "farm")
                         expanded = false
                         resize()
                         render()
                     }
-                    item(if(tab=="Boss") "■ PARAR BOSS" else "■ PARAR FARM") { service.stopLoop(); render() }
+                    item(if (isBoss) "■ PARAR BOSS" else "■ PARAR FARM") { service.stopLoop(); render() }
                 }
                 val x1 = combatPrefs.getInt("x1", 40)
                 val y = combatPrefs.getInt("y", 94)
