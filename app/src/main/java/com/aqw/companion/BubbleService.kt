@@ -168,7 +168,7 @@ class BubbleService: Service() {
                 }
                 val boss=UltraGuide.bosses.firstOrNull{it.name==selected}?:UltraGuide.bosses.first()
                 val subTabs=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
-                listOf("Equipe","Build","Boss").forEach { name->
+                listOf("Equipe","Build","Boss","Taunt").forEach { name->
                     subTabs.addView(button(name){detail=name;render()}.apply{
                         gravity=Gravity.CENTER;textSize=12f;setPadding(dp(2),dp(9),dp(2),dp(9))
                         if(detail==name){background=shape(0xFF574321.toInt(),9);setTextColor(0xFFF7D48A.toInt())}
@@ -201,6 +201,18 @@ class BubbleService: Service() {
                             line("Elixir: ${build.elixir}")
                             line("Poção: ${build.potion}")
                         }
+                    }
+                    "Taunt" -> {
+                        val guide=UltraGuide.tauntGuide(selected)
+                        heading("⏱ QUANDO USAR O TAUNT")
+                        line(guide.timing)
+                        heading("GATILHO / AVISO")
+                        line(guide.trigger)
+                        heading("QUEM USA")
+                        line(guide.roles)
+                        heading("ATENÇÃO")
+                        line(guide.caution)
+                        if(!guide.verified)line("⚠ Timing não verificado. Não use como cronômetro.")
                     }
                     else->{
                         heading("Mecânicas do chefe")
