@@ -349,22 +349,69 @@ class BubbleService: Service() {
             }
             "Farm" -> {
                 heading("AUTO FARM / AUTO BOSS")
-                line("Controle dentro do jogo. Configure as posições e habilidades no aplicativo antes de iniciar.")
+                line("Tudo aqui na bolinha, sem sair do AQW.")
                 line("Experimental: não reconhece morte, cooldowns ou inimigos. Não usar em Ultras.")
+                val combatPrefs = getSharedPreferences(CombatTapService.PREFS, MODE_PRIVATE)
+                val profiles = linkedMapOf(
+                    "Legion Revenant" to "4,3,2,5",
+                    "ArchMage" to "3,4,5,2",
+                    "Arcana Invoker" to "2,3,4,5",
+                    "Void Highlord" to "4,3,2,5",
+                    "Chaos Avenger" to "2,3,4,5",
+                    "Yami no Ronin" to "2,3,4,5"
+                )
+                val farmClass = combatPrefs.getString("farm_class", "Legion Revenant") ?: "Legion Revenant"
+                item("Classe: $farmClass   ▾") {
+                    chooser("Classe do Farm", profiles.keys.toList()) { selectedClass ->
+                        CombatTapService.instance?.stopLoop()
+                        combatPrefs.edit().putString("farm_class", selectedClass)
+                            .putString("sequence", profiles[selectedClass]).apply()
+                    }
+                }
+                line("Combo: " + (combatPrefs.getString("sequence", profiles[farmClass]) ?: "2,3,4,5"))
                 val service = CombatTapService.instance
                 if (service == null) {
-                    line("Ative o serviço de acessibilidade AQW Companion nas configurações do Android antes de usar.")
-                    item("Abrir acessibilidade") {
-                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                    }
+                    line("Ative a acessibilidade do AQW Companion para controlar os toques.")
                 } else {
                     line(if (service.isLoopRunning()) "Status: ATIVO" else "Status: PARADO")
-                    item("▶ INICIAR FARM") { service.startLoop(); render() }
+                    item("▶ INICIAR FARM") {
+                        service.startLoop()
+                        expanded = false
+                        resize()
+                        render()
+                    }
                     item("■ PARAR FARM") { service.stopLoop(); render() }
                 }
-                item("Configurar habilidades e posições") {
-                    startActivity(Intent(this, CombatActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                val x1 = combatPrefs.getInt("x1", 40)
+                val y = combatPrefs.getInt("y", 94)
+                heading("Ajuste dos botões inferiores")
+                line("Skill 1: $x1% horizontal | Barra: $y% vertical")
+                item("◀ Skills para esquerda") {
+                    val editor = combatPrefs.edit()
+                    (1..5).forEach { n ->
+                        editor.putInt("x$n", (combatPrefs.getInt("x$n", 36+n*4)-1).coerceIn(1,99))
+                    }
+                    editor.apply();render()
                 }
+                item("Skills para direita ▶") {
+                    val editor = combatPrefs.edit()
+                    (1..5).forEach { n ->
+                        editor.putInt("x$n", (combatPrefs.getInt("x$n", 36+n*4)+1).coerceIn(1,99))
+                    }
+                    editor.apply();render()
+                }
+                item("Barra mais acima ▲") {
+                    combatPrefs.edit().putInt("y", (y-1).coerceIn(1,99)).apply();render()
+                }
+                item("Barra mais abaixo ▼") {
+                    combatPrefs.edit().putInt("y", (y+1).coerceIn(1,99)).apply();render()
+                }
+                item("Restaurar posições conforme print") {
+                    val editor = combatPrefs.edit().putInt("y",94)
+                    (1..5).forEach { n -> editor.putInt("x$n",36+n*4) }
+                    editor.apply();render()
+                }
+                line("Os ajustes usam a barra de skills inferior como referência. Se estiver clicando no lugar errado, pare o farm antes de ajustar.")
             }
             "Forge"->{
                 item("Forge: $selectedForge   ▾"){
