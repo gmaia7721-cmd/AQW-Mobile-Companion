@@ -203,16 +203,25 @@ class BubbleService: Service() {
                         }
                     }
                     "Taunt" -> {
+                        item("Sua classe: $chosen   ▾") {
+                            chooser("Qual classe você está usando?",boss.team){chosen=it
+                                getSharedPreferences("companion_settings",MODE_PRIVATE).edit()
+                                    .putString("selected_class",chosen).apply()
+                            }
+                        }
                         val guide=UltraGuide.tauntGuide(selected)
-                        heading("⏱ QUANDO USAR O TAUNT")
+                        val classAdvice=UltraGuide.classTaunt(selected,chosen)
+                        heading("🎯 $chosen — QUANDO DAR TAUNT?")
+                        line(classAdvice.whenToTaunt)
+                        heading("O QUE FAZER")
+                        line(classAdvice.action)
+                        heading("SINAL NA TELA")
+                        line(classAdvice.signal)
+                        heading("IMPORTANTE")
+                        line(classAdvice.warning)
+                        if(!classAdvice.confirmed)line("⚠ Rotação exata não confirmada para esta classe. Não inventamos segundos.")
+                        heading("MECÂNICA GERAL")
                         line(guide.timing)
-                        heading("GATILHO / AVISO")
-                        line(guide.trigger)
-                        heading("QUEM USA")
-                        line(guide.roles)
-                        heading("ATENÇÃO")
-                        line(guide.caution)
-                        if(!guide.verified)line("⚠ Timing não verificado. Não use como cronômetro.")
                     }
                     else->{
                         heading("Mecânicas do chefe")
