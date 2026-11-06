@@ -23,6 +23,10 @@ class BubbleService: Service() {
     private var detail="Equipe"
     private var selectedForge="Dauntless"
     private var selectedPotion="Fate Tonic"
+    private var team=mutableListOf<String>()
+    private var willTaunt=true
+    private var tauntOrder=1
+    private var craftStep=0
     private var classMode="Farm"
     private var classSearch=""
     private var showClassPicker=false
@@ -67,6 +71,10 @@ class BubbleService: Service() {
         val prefs=getSharedPreferences("companion_settings",MODE_PRIVATE)
         selected=prefs.getString("selected_ultra","Ultra Dage") ?: "Ultra Dage"
         chosen=prefs.getString("selected_class","Chaos Avenger") ?: "Chaos Avenger"
+        willTaunt=prefs.getBoolean("will_taunt",true)
+        tauntOrder=prefs.getInt("taunt_order",1)
+        val defaultTeam=UltraGuide.bosses.firstOrNull{it.name==selected}?.team ?: emptyList()
+        team=(0..3).map { prefs.getString("team_$it",defaultTeam.getOrNull(it) ?: "Lord of Order") ?: "Lord of Order" }.toMutableList()
         params=WindowManager.LayoutParams(dp(58),dp(58),WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,PixelFormat.TRANSLUCENT).apply {
             gravity=Gravity.TOP or Gravity.START
             x=prefs.getInt("bubble_x",resources.displayMetrics.widthPixels-dp(70))
@@ -162,6 +170,7 @@ class BubbleService: Service() {
                         selected=name
                         chosen=UltraGuide.bosses.first{it.name==name}.team.first()
                         detail="Equipe"
+                        team=bossTeam(name)
                         getSharedPreferences("companion_settings",MODE_PRIVATE).edit()
                             .putString("selected_ultra",selected).putString("selected_class",chosen).apply()
                     }
@@ -178,6 +187,19 @@ class BubbleService: Service() {
                 when(detail){
                     "Equipe"->{
                         heading("Composição recomendada")
+                        heading("Monte sua composição (toque para trocar)")
+                        team.forEachIndexed{i,c->
+                            item("${i+1}. $c   ▾"){
+                                val names=(UltraGuide.bosses.flatMap{it.team}+team).distinct().sorted()
+                                chooser("Jogador ${i+1}: classe",names){newClass->
+                                    team[i]=newClass
+                                    getSharedPreferences("companion_settings",MODE_PRIVATE).edit().putString("team_$i",newClass).apply()
+                                }
+                            }
+                        }
+                        heading("Sua classe")
+                        item("$chosen   ▾"){chooser("Minha classe",team.distinct()){chosen=it}}
+                        heading("Sugestão original")
                         boss.team.forEachIndexed{i,c->
                             item("${i+1}. $c\n${boss.roles[i]}"){
                                 chosen=c;detail="Build"
@@ -204,14 +226,30 @@ class BubbleService: Service() {
                     }
                     "Taunt" -> {
                         item("Sua classe: $chosen   ▾") {
-                            chooser("Qual classe você está usando?",boss.team){chosen=it
+                            chooser("Qual classe você está usando?",team.distinct()){chosen=it
                                 getSharedPreferences("companion_settings",MODE_PRIVATE).edit()
                                     .putString("selected_class",chosen).apply()
                             }
                         }
+                        item("Você vai dar taunt? ${if(willTaunt) "SIM" else "NÃO"}"){
+                            willTaunt=!willTaunt
+                            getSharedPreferences("companion_settings",MODE_PRIVATE).edit().putBoolean("will_taunt",willTaunt).apply()
+                            render()
+                        }
+                        if(willTaunt)item("Sua vez: ${if(tauntOrder==1) "1º taunt" else "2º taunt"}   ▾"){
+                            tauntOrder=if(tauntOrder==1)2 else 1
+                            getSharedPreferences("companion_settings",MODE_PRIVATE).edit().putInt("taunt_order",tauntOrder).apply()
+                            render()
+                        }
                         val guide=UltraGuide.tauntGuide(selected)
                         val classAdvice=UltraGuide.classTaunt(selected,chosen)
-                        heading("🎯 $chosen — QUANDO DAR TAUNT?")
+                        heading("🎯 $chosen — SUA FUNÇÃO")
+                        if(!willTaunt){
+                            line("Você NÃO é responsável pelo taunt nesta composição.")
+                            line("Mantenha buffs, cura ou DPS e não use Scroll of Enrage sem combinar.")
+                        } else {
+                            line("Você é o ${tauntOrder}º taunter na rotação combinada.")
+                            heading("QUANDO DAR TAUNT?")
                         line(classAdvice.whenToTaunt)
                         heading("O QUE FAZER")
                         line(classAdvice.action)
@@ -220,6 +258,7 @@ class BubbleService: Service() {
                         heading("IMPORTANTE")
                         line(classAdvice.warning)
                         if(!classAdvice.confirmed)line("⚠ Rotação exata não confirmada para esta classe. Não inventamos segundos.")
+                        }
                         heading("MECÂNICA GERAL")
                         line(guide.timing)
                     }
@@ -319,17 +358,30 @@ class BubbleService: Service() {
             }
             else->{
                 item("Consumível: $selectedPotion   ▾"){
-                    chooser("Escolher consumível",UltraGuide.consumables.map{it.name}){selectedPotion=it}
+                    chooser("Escolher consumível",UltraGuide.consumables.map{it.name}){selectedPotion=it;craftStep=0}
                 }
                 UltraGuide.consumables.firstOrNull{it.name==selectedPotion}?.let{
                     heading(it.name)
                     line(it.note)
+                    val craft=UltraGuide.craftGuide(it.name)
+                    heading("MATERIAIS NECESSÁRIOS")
+                    if(craft.materials.isEmpty())line("Materiais ainda não verificados.")
+                    else craft.materials.forEach{m->line("• $m")}
+                    heading("COMO FAZER — PASSO A PASSO")
+                    val index=craftStep.coerceIn(0,craft.steps.lastIndex)
+                    line("Passo ${index+1} de ${craft.steps.size}")
+                    line(craft.steps[index])
+                    item("◀ Anterior"){craftStep=(craftStep-1).coerceAtLeast(0);render()}
+                    item("Próximo ▶"){craftStep=(craftStep+1).coerceAtMost(craft.steps.lastIndex);render()}
+                    if(!craft.verified)line("⚠ Guia não verificado; não gaste materiais sem conferir.")
+                    line("Fonte: ${craft.source}")
                     item("Copiar /join ${it.join}"){copy("/join ${it.join}")}
                 }
             }
         }
         body.addView(label("GUIA DE REFERÊNCIA  •  AQW",10f).apply { setTextColor(muted);gravity=Gravity.CENTER })
     }
+    private fun bossTeam(name:String)=UltraGuide.bosses.firstOrNull{it.name==name}?.team?.toMutableList() ?: mutableListOf()
     private fun resize(){
         val p=params?:return
         p.flags=if(expanded && tab=="Classes" && showClassPicker) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
